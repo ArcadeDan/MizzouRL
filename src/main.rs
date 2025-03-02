@@ -1,13 +1,9 @@
-
-
-
 use specs::prelude::*;
 use Ecs::component::{Player, Position, Renderable, State};
-use Generation::map::new_map;
+use Generation::map::{new_map_rooms_and_corridors};
 
-mod Generation;
 mod Ecs;
-
+mod Generation;
 
 fn main() {
     let mut gs = State { ecs: World::new() };
@@ -16,7 +12,7 @@ fn main() {
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
 
-    gs.ecs.insert(new_map());
+    gs.ecs.insert(new_map_rooms_and_corridors());
 
     let context = bracket_lib::prelude::BTermBuilder::simple80x50()
         .with_title("Mizzou Roguelike")
@@ -33,9 +29,6 @@ fn main() {
         })
         .with(Player {})
         .build();
-
-    
-    
 
     bracket_lib::prelude::main_loop(context, gs);
 

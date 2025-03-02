@@ -4,7 +4,6 @@ use specs_derive::Component;
 
 use crate::Generation::map::{draw_map, player_input};
 
-
 #[derive(Component)]
 pub struct Position {
     pub x: i32,
@@ -41,7 +40,7 @@ impl GameState for State {
 
         player_input(self, ctx);
         self.run_systems();
-        
+
         let map = self.ecs.fetch::<Vec<TileType>>();
         draw_map(&map, ctx);
 
