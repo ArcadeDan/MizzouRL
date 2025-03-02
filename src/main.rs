@@ -1,6 +1,6 @@
 use specs::prelude::*;
 use Ecs::component::{Player, Position, Renderable, State};
-use Generation::map::{new_map_rooms_and_corridors};
+use Generation::map::new_map_rooms_and_corridors;
 
 mod Ecs;
 mod Generation;
