@@ -4,6 +4,7 @@ use generation::map::{new_map_rooms_and_corridors, Map};
 
 mod ecs;
 mod generation;
+mod ui;
 
 
 fn main() -> bracket_lib::prelude::BError {
