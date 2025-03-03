@@ -1,6 +1,6 @@
 use specs::prelude::*;
 use ecs::component::{Player, Position, Renderable, State, Viewshed};
-use generation::map::{self, new_map_rooms_and_corridors, Map};
+use generation::map::{new_map_rooms_and_corridors, Map};
 
 mod ecs;
 mod generation;
@@ -26,7 +26,7 @@ fn main() -> bracket_lib::prelude::BError {
 
     gs.ecs
         .create_entity()
-        .with(Position { x: 40, y: 25 })
+        .with(Position { x: player_x, y: player_y })
         .with(Renderable {
             glyph: bracket_lib::prelude::to_cp437('@'),
             fg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::YELLOW),
