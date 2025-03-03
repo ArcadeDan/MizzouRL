@@ -2,7 +2,7 @@ use bracket_lib::prelude::GameState;
 use specs::prelude::*;
 use specs_derive::Component;
 
-use crate::Generation::map::{draw_map, player_input, TileType};
+use crate::generation::map::{draw_map, player_input};
 
 use super::view_systems::VisibilitySystem;
 

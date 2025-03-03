@@ -2,12 +2,12 @@ use std::cmp::{max, min};
 
 use bracket_lib::{
     color::RGB,
-    prelude::{Algorithm2D, BaseMap, Point, Tile},
+    prelude::{Algorithm2D, BaseMap, Point, },
     random::RandomNumberGenerator,
 };
 use specs::{Join, World, WorldExt};
 
-use crate::Ecs::component::{Player, Position, State, Viewshed};
+use crate::ecs::component::{Player, Position, State, Viewshed};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
