@@ -1,7 +1,7 @@
 use bracket_lib::prelude::Point;
 use specs::prelude::*;
 use bracket_lib::pathfinding::field_of_view;
-use crate::Generation::map::Map;
+use crate::generation::map::Map;
 
 use super::component::{Player, Position, Viewshed};
 

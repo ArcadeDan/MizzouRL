@@ -2,7 +2,7 @@ use bracket_lib::prelude::GameState;
 use specs::prelude::*;
 use specs_derive::Component;
 
-use crate::Generation::map::{draw_map, player_input, TileType};
+use crate::{generation::map::{draw_map, player_input}, ui::gui};
 
 use super::view_systems::VisibilitySystem;
 
@@ -55,5 +55,6 @@ impl GameState for State {
         for (pos, render) in (&positions, &renderables).join() {
             ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
         }
+        gui::draw_ui(&self.ecs, ctx);
     }
 }
