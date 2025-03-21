@@ -11,7 +11,7 @@ use crate::ecs::component::{Player, Position, State, Viewshed};
 
 
 const MAPWIDTH: usize = 80;
-const MAPHEIGHT: usize = 50;
+const MAPHEIGHT: usize = 43;
 const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 
 
@@ -161,7 +161,7 @@ pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) {
 
 pub fn new_map_rooms_and_corridors() -> Map {
     let mut map = Map {
-        tiles: vec![TileType::Wall; 80 * 50],
+        tiles: vec![TileType::Wall; MAPCOUNT],
         rooms: Vec::new(),
         width: MAPWIDTH as i32,
         height: MAPHEIGHT as i32,
