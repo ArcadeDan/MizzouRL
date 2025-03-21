@@ -2,7 +2,10 @@ use bracket_lib::prelude::GameState;
 use specs::prelude::*;
 use specs_derive::Component;
 
-use crate::{generation::map::{draw_map, player_input}, ui::gui};
+use crate::{
+    generation::map::{draw_map, player_input},
+    ui::gui,
+};
 
 use super::view_systems::VisibilitySystem;
 
@@ -19,6 +22,8 @@ pub struct Renderable {
 }
 #[derive(Component, Debug)]
 pub struct Player {}
+#[derive(Component, Debug)]
+pub struct Monster {}
 
 pub struct State {
     pub ecs: World,
@@ -33,7 +38,7 @@ pub struct Viewshed {
 
 impl State {
     pub fn run_systems(&mut self) {
-        let mut vis = VisibilitySystem{};
+        let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
         self.ecs.maintain();
     }
@@ -45,7 +50,6 @@ impl GameState for State {
 
         player_input(self, ctx);
         self.run_systems();
-
 
         draw_map(&self.ecs, ctx);
 

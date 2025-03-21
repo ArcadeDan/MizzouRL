@@ -1,4 +1,4 @@
-use ecs::component::{Player, Position, Renderable, State, Viewshed};
+use ecs::component::{Player, Monster, Position, Renderable, State, Viewshed};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -14,6 +14,7 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<Renderable>();
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
+    gs.ecs.register::<Monster>();
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
