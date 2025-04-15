@@ -7,7 +7,7 @@ use crate::{
     ui::gui,
 };
 
-use super::view_systems::VisibilitySystem;
+use super::{monster_ai_system::MonsterAI, view_systems::VisibilitySystem};
 
 #[derive(Component)]
 pub struct Position {
@@ -25,8 +25,15 @@ pub struct Player {}
 #[derive(Component, Debug)]
 pub struct Monster {}
 
+#[derive(PartialEq, Copy, Clone)]
+pub enum RunState {
+    Paused,
+    Running,
+}
+
 pub struct State {
     pub ecs: World,
+    pub runstate: RunState,
 }
 
 #[derive(Component)]
@@ -40,6 +47,8 @@ impl State {
     pub fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
+        let mut mob = MonsterAI {};
+        mob.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
