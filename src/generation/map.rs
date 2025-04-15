@@ -7,7 +7,7 @@ use bracket_lib::{
 };
 use specs::{Join, World, WorldExt};
 
-use crate::ecs::component::{Player, Position, State, Viewshed};
+use crate::ecs::component::{Player, Position, RunState, State, Viewshed};
 
 
 const MAPWIDTH: usize = 80;
@@ -119,17 +119,18 @@ fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     }
 }
 
-pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) {
+pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> RunState {
     match ctx.key {
-        None => {}
+        None => { return RunState::Paused },
         Some(key) => match key {
             bracket_lib::prelude::VirtualKeyCode::Left => try_to_move_player(-1, 0, &mut gs.ecs),
             bracket_lib::prelude::VirtualKeyCode::Right => try_to_move_player(1, 0, &mut gs.ecs),
             bracket_lib::prelude::VirtualKeyCode::Up => try_to_move_player(0, -1, &mut gs.ecs),
             bracket_lib::prelude::VirtualKeyCode::Down => try_to_move_player(0, 1, &mut gs.ecs),
-            _ => {}
+            _ => { return RunState::Paused}
         },
     }
+    RunState::Running
 }
 
 // pub fn new_map_test() -> Vec<TileType> {

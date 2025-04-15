@@ -57,9 +57,13 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
 
-        player_input(self, ctx);
-        self.run_systems();
-
+        if self.runstate == RunState::Running {
+            self.run_systems();
+            self.runstate = RunState::Paused;
+            
+        } else {
+            self.runstate = player_input(self, ctx);
+        }
         draw_map(&self.ecs, ctx);
 
         let positions = self.ecs.read_storage::<Position>();
