@@ -1,3 +1,4 @@
+use bracket_lib::prelude::Point;
 use ecs::component::{Player, Monster, Position, Renderable, State, Viewshed, RunState};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
@@ -45,6 +46,8 @@ fn main() -> bracket_lib::prelude::BError {
     }
 
     gs.ecs.insert(map);
+    gs.ecs.insert(Point::new(player_x, player_y));
+    
 
     let context = bracket_lib::prelude::BTermBuilder::simple80x50()
         .with_title("Mizzou Roguelike")
