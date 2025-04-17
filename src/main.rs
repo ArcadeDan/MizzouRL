@@ -1,5 +1,5 @@
 use bracket_lib::prelude::Point;
-use ecs::component::{Player, Monster, Position, Renderable, State, Viewshed, RunState};
+use ecs::component::{Monster, Name, Player, Position, Renderable, RunState, State, Viewshed};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -16,17 +16,20 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<Player>();
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
+    gs.ecs.register::<Name>();
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
 
-    for room in map.rooms.iter().skip(1) {
+    for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
         let glyph: bracket_lib::prelude::FontCharType;
+        let name: String;
+    
         let roll = bracket_lib::prelude::RandomNumberGenerator::new().roll_dice(1, 2);
         match roll {
-            1 => glyph = bracket_lib::prelude::to_cp437('g'),
-            _ => glyph = bracket_lib::prelude::to_cp437('o'),
+            1 => { glyph = bracket_lib::prelude::to_cp437('g'); name = "Goblin".to_string(); },
+            _ => { glyph = bracket_lib::prelude::to_cp437('o'); name = "Orc".to_string(); },
         }
 
         gs.ecs
@@ -43,6 +46,7 @@ fn main() -> bracket_lib::prelude::BError {
                 dirty: true,
             })
             .with(Monster{})
+            .with(Name { name: format!("{} #{}", &name, i) })
             .build();
     }
 
