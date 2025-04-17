@@ -42,6 +42,7 @@ fn main() -> bracket_lib::prelude::BError {
                 range: 8,
                 dirty: true,
             })
+            .with(Monster{})
             .build();
     }
 
