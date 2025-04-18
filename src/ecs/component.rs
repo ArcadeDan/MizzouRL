@@ -7,7 +7,7 @@ use crate::{
     ui::gui,
 };
 
-use super::{monster_ai_system::MonsterAI, view_systems::VisibilitySystem};
+use super::{map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI, view_systems::VisibilitySystem};
 
 #[derive(Component)]
 pub struct Position {
@@ -29,6 +29,11 @@ pub struct Monster {}
 pub struct Name {
     pub name: String,
 }
+
+#[derive(Component, Debug)]
+pub struct BlocksTile {}
+
+
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
@@ -54,6 +59,8 @@ impl State {
         vis.run_now(&self.ecs);
         let mut mob = MonsterAI {};
         mob.run_now(&self.ecs);
+        let mut mapindex = MapIndexingSystem {};
+        mapindex.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -65,7 +72,6 @@ impl GameState for State {
         if self.runstate == RunState::Running {
             self.run_systems();
             self.runstate = RunState::Paused;
-            
         } else {
             self.runstate = player_input(self, ctx);
         }
@@ -74,10 +80,12 @@ impl GameState for State {
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
         let map = self.ecs.fetch::<Map>();
-        
+
         for (pos, render) in (&positions, &renderables).join() {
             let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] { ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph) };
+            if map.visible_tiles[idx] {
+                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph)
+            };
         }
         gui::draw_ui(&self.ecs, ctx);
     }

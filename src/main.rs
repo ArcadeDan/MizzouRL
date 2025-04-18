@@ -1,5 +1,5 @@
 use bracket_lib::prelude::Point;
-use ecs::component::{Monster, Name, Player, Position, Renderable, RunState, State, Viewshed};
+use ecs::component::{Monster, Name, Player, Position, Renderable, RunState, State, Viewshed, BlocksTile};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -9,7 +9,10 @@ mod generation;
 mod ui;
 
 fn main() -> bracket_lib::prelude::BError {
-    let mut gs = State { ecs: World::new(), runstate: RunState::Running };
+    let mut gs = State {
+        ecs: World::new(),
+        runstate: RunState::Running,
+    };
 
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
@@ -17,19 +20,28 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<Viewshed>();
     gs.ecs.register::<Monster>();
     gs.ecs.register::<Name>();
+    gs.ecs.register::<BlocksTile>();
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
 
+
+    // monsters
     for (i, room) in map.rooms.iter().skip(1).enumerate() {
         let (x, y) = room.center();
         let glyph: bracket_lib::prelude::FontCharType;
         let name: String;
-    
+
         let roll = bracket_lib::prelude::RandomNumberGenerator::new().roll_dice(1, 2);
         match roll {
-            1 => { glyph = bracket_lib::prelude::to_cp437('g'); name = "Goblin".to_string(); },
-            _ => { glyph = bracket_lib::prelude::to_cp437('o'); name = "Orc".to_string(); },
+            1 => {
+                glyph = bracket_lib::prelude::to_cp437('g');
+                name = "Goblin".to_string();
+            }
+            _ => {
+                glyph = bracket_lib::prelude::to_cp437('o');
+                name = "Orc".to_string();
+            }
         }
 
         gs.ecs
@@ -45,14 +57,16 @@ fn main() -> bracket_lib::prelude::BError {
                 range: 8,
                 dirty: true,
             })
-            .with(Monster{})
-            .with(Name { name: format!("{} #{}", &name, i) })
+            .with(Monster {})
+            .with(Name {
+                name: format!("{} #{}", &name, i),
+            })
+            .with(BlocksTile {})
             .build();
     }
 
     gs.ecs.insert(map);
-    gs.ecs.insert(Point::new(player_x, player_y));
-    
+    gs.ecs.insert(Point::new(player_x, player_y)); // player position
 
     let context = bracket_lib::prelude::BTermBuilder::simple80x50()
         .with_title("Mizzou Roguelike")
@@ -60,6 +74,8 @@ fn main() -> bracket_lib::prelude::BError {
         .build()
         .unwrap();
 
+
+    // player placdement
     gs.ecs
         .create_entity()
         .with(Position {
@@ -77,6 +93,7 @@ fn main() -> bracket_lib::prelude::BError {
             range: 8,
             dirty: true,
         })
+        .with(Name { name: "Player".to_string() })
         .build();
 
     bracket_lib::prelude::main_loop(context, gs);
