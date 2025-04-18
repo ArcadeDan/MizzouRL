@@ -58,3 +58,8 @@ impl GameState for State {
         gui::draw_ui(&self.ecs, ctx);
     }
 }
+
+// Test
+pub struct Steps {
+    pub count: i32,
+}

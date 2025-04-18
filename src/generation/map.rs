@@ -8,7 +8,7 @@ use bracket_lib::{
 use specs::{Join, World, WorldExt};
 
 use crate::ecs::component::{Player, Position, State, Viewshed};
-
+use crate::game::{info};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -103,19 +103,80 @@ impl Rect {
 }
 
 fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
-    let mut positions = ecs.write_storage::<Position>();
-    let mut players = ecs.write_storage::<Player>();
-    let mut viewsheds = ecs.write_storage::<Viewshed>();
-    let map = ecs.fetch::<Map>();
+    // Prepare a structure to store movement results
+    struct MovementResult {
+        moved: bool,
+        bumped_wall: bool,
+        from_x: i32,
+        from_y: i32,
+        to_x: i32,
+        to_y: i32,
+        dx: i32,
+        dy: i32,
+    }
 
-    for (_player, pos, viewshed) in (&mut players, &mut positions, &mut viewsheds).join() {
-        let destination_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
-        if map.tiles[destination_idx] != TileType::Wall {
-            pos.x = min(79, max(0, pos.x + delta_x));
-            pos.y = min(49, max(0, pos.y + delta_y));
+    // Default - no movement
+    let mut result = MovementResult {
+        moved: false,
+        bumped_wall: false,
+        from_x: 0,
+        from_y: 0,
+        to_x: 0,
+        to_y: 0,
+        dx: delta_x,
+        dy: delta_y,
+    };
 
-            viewshed.dirty = true;
+    // borrow
+    {
+        let mut positions = ecs.write_storage::<Position>();
+        let mut players = ecs.write_storage::<Player>();
+        let mut viewsheds = ecs.write_storage::<Viewshed>();
+        let map = ecs.fetch::<Map>();
+
+        for (_player, pos, viewshed) in (&mut players, &mut positions, &mut viewsheds).join() {
+            let destination_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
+
+            // Record original position
+            result.from_x = pos.x;
+            result.from_y = pos.y;
+
+            if map.tiles[destination_idx] != TileType::Wall {
+                // Move the player
+                pos.x = min(79, max(0, pos.x + delta_x));
+                pos.y = min(49, max(0, pos.y + delta_y));
+
+                // Record results
+                result.moved = true;
+                result.to_x = pos.x;
+                result.to_y = pos.y;
+
+                viewshed.dirty = true;
+            } else {
+                // Record wall bump
+                result.bumped_wall = true;
+            }
         }
+    }
+
+    // placeholder just to showcase logging in map.rs
+    if result.moved {
+        // Log the movement direction
+        if result.dx != 0 && result.dy == 0 {
+            info(ecs, format!(
+                "You move {} from ({},{}) to ({},{})",
+                if result.dx > 0 { "east" } else { "west" },
+                result.from_x, result.from_y, result.to_x, result.to_y
+            ));
+        } else if result.dx == 0 && result.dy != 0 {
+            info(ecs, format!(
+                "You move {} from ({},{}) to ({},{})",
+                if result.dy > 0 { "south" } else { "north" },
+                result.from_x, result.from_y, result.to_x, result.to_y
+            ));
+        }
+    } else if result.bumped_wall {
+        info(ecs, "You bump into a wall.");
     }
 }
 
