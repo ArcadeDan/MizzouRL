@@ -7,13 +7,11 @@ use bracket_lib::{
 };
 use specs::{Join, World, WorldExt};
 
-use crate::ecs::component::{Player, Position, State, Viewshed};
-
+use crate::ecs::component::{Player, Position, RunState, State, Viewshed};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
 const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
-
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum TileType {
@@ -28,6 +26,7 @@ pub struct Map {
     pub height: i32,
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
+    pub blocked: Vec<bool>,
 }
 
 impl Algorithm2D for Map {
@@ -40,11 +39,42 @@ impl BaseMap for Map {
     fn is_opaque(&self, idx: usize) -> bool {
         self.tiles[idx as usize] == TileType::Wall
     }
+
+    fn get_pathing_distance(&self, _idx1: usize, _idx2: usize) -> f32 {
+        let w = self.width as usize;
+        let p1 = Point::new(_idx1 % w, _idx1 / w);
+        let p2 = Point::new(_idx2 % w, _idx2 / w);
+        bracket_lib::prelude::DistanceAlg::Pythagoras.distance2d(p1, p2)
+    }
+
+    fn get_available_exits(&self, idx: usize) -> bracket_lib::prelude::SmallVec<[(usize, f32); 10]> {
+        let mut exits = bracket_lib::prelude::SmallVec::new();
+        let x = idx as i32 % self.width;
+        let y = idx as i32 / self.width;
+        let w = self.width as usize;
+
+        // cardinal directions
+
+        if self.is_exit_valid(x - 1, y) {
+            exits.push((idx - 1, 1.0))
+        };
+        if self.is_exit_valid(x + 1, y) {
+            exits.push((idx + 1, 1.0))
+        };
+        if self.is_exit_valid(x, y - 1) {
+            exits.push((idx - w, 1.0))
+        };
+        if self.is_exit_valid(x, y + 1) {
+            exits.push((idx + w, 1.0))
+        };
+
+        exits
+    }
 }
 
 impl Map {
     pub fn xy_idx(&self, x: i32, y: i32) -> usize {
-        (y as usize * 80) + x as usize
+        (y as usize * self.width as usize) + x as usize
     }
 
     fn apply_room_to_map(&mut self, room: &Rect) {
@@ -59,7 +89,7 @@ impl Map {
     fn apply_horizontal_tunnel(&mut self, x1: i32, x2: i32, y: i32) {
         for x in min(x1, x2)..=max(x1, x2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < 80 * 50 {
+            if idx > 0 && idx < self.width as usize * self.height as usize {
                 self.tiles[idx as usize] = TileType::Floor;
             }
         }
@@ -68,9 +98,23 @@ impl Map {
     fn apply_vertical_tunnel(&mut self, y1: i32, y2: i32, x: i32) {
         for y in min(y1, y2)..=max(y1, y2) {
             let idx = self.xy_idx(x, y);
-            if idx > 0 && idx < 80 * 50 {
+            if idx > 0 && idx < self.width as usize * self.height as usize {
                 self.tiles[idx as usize] = TileType::Floor;
             }
+        }
+    }
+
+    fn is_exit_valid(&self, x: i32, y: i32) -> bool {
+        if x < 1 || x > self.width - 1 || y < 1 || y > self.height - 1 {
+            return false;
+        }
+        let idx = self.xy_idx(x, y);
+        !self.blocked[idx]
+    }
+
+    pub fn populate_blocked(&mut self) {
+        for (i, tile) in self.tiles.iter().enumerate() {
+            self.blocked[i] = *tile == TileType::Wall;
         }
     }
 }
@@ -114,22 +158,26 @@ fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
             pos.x = min(79, max(0, pos.x + delta_x));
             pos.y = min(49, max(0, pos.y + delta_y));
 
+            let mut ppos = ecs.write_resource::<Point>();
             viewshed.dirty = true;
+            ppos.x = pos.x;
+            ppos.y = pos.y;
         }
     }
 }
 
-pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) {
+pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> RunState {
     match ctx.key {
-        None => {}
+        None => return RunState::Paused,
         Some(key) => match key {
             bracket_lib::prelude::VirtualKeyCode::Left => try_to_move_player(-1, 0, &mut gs.ecs),
             bracket_lib::prelude::VirtualKeyCode::Right => try_to_move_player(1, 0, &mut gs.ecs),
             bracket_lib::prelude::VirtualKeyCode::Up => try_to_move_player(0, -1, &mut gs.ecs),
             bracket_lib::prelude::VirtualKeyCode::Down => try_to_move_player(0, 1, &mut gs.ecs),
-            _ => {}
+            _ => return RunState::Paused,
         },
     }
+    RunState::Running
 }
 
 // pub fn new_map_test() -> Vec<TileType> {
@@ -167,6 +215,7 @@ pub fn new_map_rooms_and_corridors() -> Map {
         height: MAPHEIGHT as i32,
         revealed_tiles: vec![false; MAPCOUNT],
         visible_tiles: vec![false; MAPCOUNT],
+        blocked: vec![false; MAPCOUNT],
     };
 
     const MAX_ROOMS: i32 = 30;
@@ -240,7 +289,7 @@ pub fn draw_map(ecs: &World, ctx: &mut bracket_lib::prelude::BTerm) {
 
         // Move the coordinates
         x += 1;
-        if x > MAPWIDTH as i32-1 {
+        if x > MAPWIDTH as i32 - 1 {
             x = 0;
             y += 1;
         }

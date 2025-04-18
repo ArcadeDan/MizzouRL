@@ -2,9 +2,12 @@ use bracket_lib::prelude::GameState;
 use specs::prelude::*;
 use specs_derive::Component;
 
-use crate::{generation::map::{draw_map, player_input}, ui::gui};
+use crate::{
+    generation::map::{draw_map, player_input, Map},
+    ui::gui,
+};
 
-use super::view_systems::VisibilitySystem;
+use super::{map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI, view_systems::VisibilitySystem};
 
 #[derive(Component)]
 pub struct Position {
@@ -19,9 +22,28 @@ pub struct Renderable {
 }
 #[derive(Component, Debug)]
 pub struct Player {}
+#[derive(Component, Debug)]
+pub struct Monster {}
+
+#[derive(Component, Debug)]
+pub struct Name {
+    pub name: String,
+}
+
+#[derive(Component, Debug)]
+pub struct BlocksTile {}
+
+
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum RunState {
+    Paused,
+    Running,
+}
 
 pub struct State {
     pub ecs: World,
+    pub runstate: RunState,
 }
 
 #[derive(Component)]
@@ -33,8 +55,12 @@ pub struct Viewshed {
 
 impl State {
     pub fn run_systems(&mut self) {
-        let mut vis = VisibilitySystem{};
+        let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
+        let mut mob = MonsterAI {};
+        mob.run_now(&self.ecs);
+        let mut mapindex = MapIndexingSystem {};
+        mapindex.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -43,17 +69,23 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
 
-        player_input(self, ctx);
-        self.run_systems();
-
-
+        if self.runstate == RunState::Running {
+            self.run_systems();
+            self.runstate = RunState::Paused;
+        } else {
+            self.runstate = player_input(self, ctx);
+        }
         draw_map(&self.ecs, ctx);
 
         let positions = self.ecs.read_storage::<Position>();
         let renderables = self.ecs.read_storage::<Renderable>();
+        let map = self.ecs.fetch::<Map>();
 
         for (pos, render) in (&positions, &renderables).join() {
-            ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+            let idx = map.xy_idx(pos.x, pos.y);
+            if map.visible_tiles[idx] {
+                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph)
+            };
         }
         gui::draw_ui(&self.ecs, ctx);
     }
