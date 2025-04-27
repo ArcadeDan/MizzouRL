@@ -1,5 +1,5 @@
 use bracket_lib::prelude::Point;
-use ecs::component::{BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, RunState, State, Viewshed};
+use ecs::component::{BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, RunState, State, SufferDamage, Viewshed, WantsToMelee};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -22,6 +22,9 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<Name>();
     gs.ecs.register::<BlocksTile>();
     gs.ecs.register::<CombatStats>();
+    gs.ecs.register::<WantsToMelee>();
+    gs.ecs.register::<SufferDamage>();
+    
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
