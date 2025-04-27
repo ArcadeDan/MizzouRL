@@ -44,6 +44,11 @@ pub struct Name {
 #[derive(Component, Debug)]
 pub struct BlocksTile {}
 
+pub struct Steps {
+    pub count: i32,
+}
+
+
 #[derive(Component, Debug)]
 pub struct CombatStats {
     pub max_hp: i32,
