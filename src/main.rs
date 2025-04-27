@@ -1,5 +1,8 @@
 use bracket_lib::prelude::Point;
-use ecs::component::{Monster, Name, Player, Position, Renderable, RunState, State, Viewshed, BlocksTile};
+use ecs::component::{
+    BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, RunState, State,
+    SufferDamage, Viewshed, WantsToMelee,
+};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -9,10 +12,7 @@ mod generation;
 mod ui;
 
 fn main() -> bracket_lib::prelude::BError {
-    let mut gs = State {
-        ecs: World::new(),
-        runstate: RunState::Running,
-    };
+    let mut gs = State { ecs: World::new() };
 
     gs.ecs.register::<Position>();
     gs.ecs.register::<Renderable>();
@@ -21,10 +21,43 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<Monster>();
     gs.ecs.register::<Name>();
     gs.ecs.register::<BlocksTile>();
+    gs.ecs.register::<CombatStats>();
+    gs.ecs.register::<WantsToMelee>();
+    gs.ecs.register::<SufferDamage>();
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
 
+    // player placdement
+    let player_entity = gs
+        .ecs
+        .create_entity()
+        .with(Position {
+            x: player_x,
+            y: player_y,
+        })
+        .with(Renderable {
+            glyph: bracket_lib::prelude::to_cp437('@'),
+            fg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::YELLOW),
+            bg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::BLACK),
+        })
+        .with(Player {})
+        .with(Viewshed {
+            visible_tiles: Vec::new(),
+            range: 8,
+            dirty: true,
+        })
+        .with(Name {
+            name: "Player".to_string(),
+        })
+        .with(CombatStats {
+            max_hp: 30,
+            hp: 30,
+            defense: 2,
+            power: 5,
+        })
+        //.with(BlocksTile {})
+        .build();
 
     // monsters
     for (i, room) in map.rooms.iter().skip(1).enumerate() {
@@ -61,12 +94,15 @@ fn main() -> bracket_lib::prelude::BError {
             .with(Name {
                 name: format!("{} #{}", &name, i),
             })
+            .with(CombatStats {
+                max_hp: 16,
+                hp: 16,
+                defense: 1,
+                power: 4,
+            })
             .with(BlocksTile {})
             .build();
     }
-
-    gs.ecs.insert(map);
-    gs.ecs.insert(Point::new(player_x, player_y)); // player position
 
     let context = bracket_lib::prelude::BTermBuilder::simple80x50()
         .with_title("Mizzou Roguelike")
@@ -74,27 +110,10 @@ fn main() -> bracket_lib::prelude::BError {
         .build()
         .unwrap();
 
-
-    // player placdement
-    gs.ecs
-        .create_entity()
-        .with(Position {
-            x: player_x,
-            y: player_y,
-        })
-        .with(Renderable {
-            glyph: bracket_lib::prelude::to_cp437('@'),
-            fg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::YELLOW),
-            bg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::BLACK),
-        })
-        .with(Player {})
-        .with(Viewshed {
-            visible_tiles: Vec::new(),
-            range: 8,
-            dirty: true,
-        })
-        .with(Name { name: "Player".to_string() })
-        .build();
+    gs.ecs.insert(map);
+    gs.ecs.insert(player_entity);
+    gs.ecs.insert(Point::new(player_x, player_y)); // player position
+    gs.ecs.insert(RunState::PreRun);
 
     bracket_lib::prelude::main_loop(context, gs);
 

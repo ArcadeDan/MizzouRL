@@ -2,12 +2,17 @@ use std::cmp::{max, min};
 
 use bracket_lib::{
     color::RGB,
-    prelude::{Algorithm2D, BaseMap, Point},
+    prelude::{console, Algorithm2D, BaseMap, Point},
     random::RandomNumberGenerator,
 };
-use specs::{Join, World, WorldExt};
 
-use crate::ecs::component::{Player, Position, RunState, State, Viewshed};
+use bracket_lib::prelude::VirtualKeyCode;
+
+use specs::{Entity, Join, World, WorldExt};
+
+use crate::ecs::component::{
+    CombatStats, Player, Position, RunState, State, Viewshed, WantsToMelee,
+};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -27,6 +32,7 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked: Vec<bool>,
+    pub tile_content: Vec<Vec<Entity>>,
 }
 
 impl Algorithm2D for Map {
@@ -47,7 +53,10 @@ impl BaseMap for Map {
         bracket_lib::prelude::DistanceAlg::Pythagoras.distance2d(p1, p2)
     }
 
-    fn get_available_exits(&self, idx: usize) -> bracket_lib::prelude::SmallVec<[(usize, f32); 10]> {
+    fn get_available_exits(
+        &self,
+        idx: usize,
+    ) -> bracket_lib::prelude::SmallVec<[(usize, f32); 10]> {
         let mut exits = bracket_lib::prelude::SmallVec::new();
         let x = idx as i32 % self.width;
         let y = idx as i32 / self.width;
@@ -67,6 +76,20 @@ impl BaseMap for Map {
         if self.is_exit_valid(x, y + 1) {
             exits.push((idx + w, 1.0))
         };
+
+        // diagonal directions
+        if self.is_exit_valid(x - 1, y - 1) {
+            exits.push(((idx - w) - 1, 1.45));
+        }
+        if self.is_exit_valid(x + 1, y - 1) {
+            exits.push(((idx - w) + 1, 1.45));
+        }
+        if self.is_exit_valid(x - 1, y + 1) {
+            exits.push(((idx - w) - 1, 1.45));
+        }
+        if self.is_exit_valid(x + 1, y + 1) {
+            exits.push(((idx - w) + 1, 1.45));
+        }
 
         exits
     }
@@ -117,6 +140,12 @@ impl Map {
             self.blocked[i] = *tile == TileType::Wall;
         }
     }
+
+    pub fn clear_content_index(&mut self) {
+        for content in self.tile_content.iter_mut() {
+            content.clear();
+        }
+    }
 }
 
 pub struct Rect {
@@ -148,18 +177,45 @@ impl Rect {
 
 fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
-    let mut players = ecs.write_storage::<Player>();
+    let mut players = ecs.read_storage::<Player>();
     let mut viewsheds = ecs.write_storage::<Viewshed>();
+    let combat_stats = ecs.read_storage::<CombatStats>();
     let map = ecs.fetch::<Map>();
+    let entities = ecs.entities();
+    let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
 
-    for (_player, pos, viewshed) in (&mut players, &mut positions, &mut viewsheds).join() {
+    for (entity, _player, pos, viewshed) in
+        (&entities, &players, &mut positions, &mut viewsheds).join()
+    {
+        if pos.x + delta_x < 1
+            || pos.x + delta_x > map.width - 1
+            || pos.y + delta_y < 1
+            || pos.y + delta_y > map.height - 1
+        {
+            return;
+        }
         let destination_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
-        if map.tiles[destination_idx] != TileType::Wall {
+
+        for potential_target in map.tile_content[destination_idx].iter() {
+            let target = combat_stats.get(*potential_target);
+            if let Some(_target) = target {
+                wants_to_melee
+                    .insert(
+                        entity,
+                        WantsToMelee {
+                            target: *potential_target,
+                        },
+                    )
+                    .expect("Add target failed");
+            }
+        }
+
+        if !map.blocked[destination_idx] {
             pos.x = min(79, max(0, pos.x + delta_x));
             pos.y = min(49, max(0, pos.y + delta_y));
 
-            let mut ppos = ecs.write_resource::<Point>();
             viewshed.dirty = true;
+            let mut ppos = ecs.write_resource::<Point>();
             ppos.x = pos.x;
             ppos.y = pos.y;
         }
@@ -168,16 +224,38 @@ fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
 
 pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> RunState {
     match ctx.key {
-        None => return RunState::Paused,
+        None => return RunState::AwaitingInput,
         Some(key) => match key {
-            bracket_lib::prelude::VirtualKeyCode::Left => try_to_move_player(-1, 0, &mut gs.ecs),
-            bracket_lib::prelude::VirtualKeyCode::Right => try_to_move_player(1, 0, &mut gs.ecs),
-            bracket_lib::prelude::VirtualKeyCode::Up => try_to_move_player(0, -1, &mut gs.ecs),
-            bracket_lib::prelude::VirtualKeyCode::Down => try_to_move_player(0, 1, &mut gs.ecs),
-            _ => return RunState::Paused,
+            // cardinal directions
+            VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
+                try_to_move_player(-1, 0, &mut gs.ecs)
+            }
+
+            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
+                try_to_move_player(1, 0, &mut gs.ecs)
+            }
+
+            VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
+                try_to_move_player(0, -1, &mut gs.ecs)
+            }
+
+            VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
+                try_to_move_player(0, 1, &mut gs.ecs)
+            }
+
+            // diagonal directions
+            VirtualKeyCode::Numpad9 | VirtualKeyCode::Y => try_to_move_player(1, -1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad7 | VirtualKeyCode::U => try_to_move_player(-1, -1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad3 | VirtualKeyCode::N => try_to_move_player(1, 1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad1 | VirtualKeyCode::B => try_to_move_player(-1, 1, &mut gs.ecs),
+
+            _ => return RunState::AwaitingInput,
         },
     }
-    RunState::Running
+    RunState::PlayerTurn
 }
 
 // pub fn new_map_test() -> Vec<TileType> {
@@ -216,6 +294,7 @@ pub fn new_map_rooms_and_corridors() -> Map {
         revealed_tiles: vec![false; MAPCOUNT],
         visible_tiles: vec![false; MAPCOUNT],
         blocked: vec![false; MAPCOUNT],
+        tile_content: vec![Vec::new(); MAPCOUNT],
     };
 
     const MAX_ROOMS: i32 = 30;

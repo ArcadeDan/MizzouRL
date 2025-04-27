@@ -1,13 +1,24 @@
 use bracket_lib::prelude::GameState;
+use serde::{Deserialize, Serialize};
 use specs::prelude::*;
-use specs_derive::Component;
+use specs::{
+    error::NoError,
+    saveload::{ConvertSaveload, Marker},
+    Entity,
+};
+use specs_derive::{Component, ConvertSaveload};
 
 use crate::{
     generation::map::{draw_map, player_input, Map},
     ui::gui,
 };
 
-use super::{map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI, view_systems::VisibilitySystem};
+use super::damage_system::{self, DamageSystem};
+use super::melee_combat_system::MeleeCombatSystem;
+use super::{
+    map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
+    view_systems::VisibilitySystem,
+};
 
 #[derive(Component)]
 pub struct Position {
@@ -33,17 +44,47 @@ pub struct Name {
 #[derive(Component, Debug)]
 pub struct BlocksTile {}
 
+#[derive(Component, Debug)]
+pub struct CombatStats {
+    pub max_hp: i32,
+    pub hp: i32,
+    pub defense: i32,
+    pub power: i32,
+}
 
+#[derive(Component, Debug, ConvertSaveload, Clone)]
+pub struct WantsToMelee {
+    pub target: Entity,
+}
+
+#[derive(Component, Debug)]
+pub struct SufferDamage {
+    pub amount: Vec<i32>,
+}
+
+impl SufferDamage {
+    pub fn new_damage(store: &mut WriteStorage<SufferDamage>, victim: Entity, amount: i32) {
+        if let Some(suffering) = store.get_mut(victim) {
+            suffering.amount.push(amount);
+        } else {
+            let dmg = SufferDamage {
+                amount: vec![amount],
+            };
+            store.insert(victim, dmg).expect("Unable to insert damage");
+        }
+    }
+}
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum RunState {
-    Paused,
-    Running,
+    AwaitingInput,
+    PreRun,
+    PlayerTurn,
+    MonsterTurn,
 }
 
 pub struct State {
     pub ecs: World,
-    pub runstate: RunState,
 }
 
 #[derive(Component)]
@@ -61,6 +102,10 @@ impl State {
         mob.run_now(&self.ecs);
         let mut mapindex = MapIndexingSystem {};
         mapindex.run_now(&self.ecs);
+        let mut melee = MeleeCombatSystem {};
+        melee.run_now(&self.ecs);
+        let mut damage = DamageSystem {};
+        damage.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -69,12 +114,36 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
 
-        if self.runstate == RunState::Running {
-            self.run_systems();
-            self.runstate = RunState::Paused;
-        } else {
-            self.runstate = player_input(self, ctx);
+        let mut newrunstate;
+        {
+            let runstate = self.ecs.fetch::<RunState>();
+            newrunstate = *runstate;
         }
+
+        match newrunstate {
+            RunState::PreRun => {
+                self.run_systems();
+                newrunstate = RunState::AwaitingInput;
+            }
+            RunState::AwaitingInput => {
+                newrunstate = player_input(self, ctx);
+            }
+            RunState::PlayerTurn => {
+                self.run_systems();
+                newrunstate = RunState::MonsterTurn;
+            }
+            RunState::MonsterTurn => {
+                self.run_systems();
+                newrunstate = RunState::AwaitingInput;
+            }
+        }
+
+        {
+            let mut runwriter = self.ecs.write_resource::<RunState>();
+            *runwriter = newrunstate;
+        }
+
+        damage_system::DamageSystem::delete_the_dead(&mut self.ecs);
         draw_map(&self.ecs, ctx);
 
         let positions = self.ecs.read_storage::<Position>();
