@@ -5,6 +5,9 @@ use bracket_lib::{
     prelude::{Algorithm2D, BaseMap, Point},
     random::RandomNumberGenerator,
 };
+
+use bracket_lib::prelude::VirtualKeyCode;
+
 use specs::{Join, World, WorldExt};
 
 use crate::ecs::component::{Player, Position, RunState, State, Viewshed};
@@ -47,7 +50,10 @@ impl BaseMap for Map {
         bracket_lib::prelude::DistanceAlg::Pythagoras.distance2d(p1, p2)
     }
 
-    fn get_available_exits(&self, idx: usize) -> bracket_lib::prelude::SmallVec<[(usize, f32); 10]> {
+    fn get_available_exits(
+        &self,
+        idx: usize,
+    ) -> bracket_lib::prelude::SmallVec<[(usize, f32); 10]> {
         let mut exits = bracket_lib::prelude::SmallVec::new();
         let x = idx as i32 % self.width;
         let y = idx as i32 / self.width;
@@ -67,6 +73,20 @@ impl BaseMap for Map {
         if self.is_exit_valid(x, y + 1) {
             exits.push((idx + w, 1.0))
         };
+
+        // diagonal directions
+        if self.is_exit_valid(x - 1, y - 1) {
+            exits.push(((idx - w) - 1, 1.45));
+        }
+        if self.is_exit_valid(x + 1, y - 1) {
+            exits.push(((idx - w) + 1, 1.45));
+        }
+        if self.is_exit_valid(x - 1, y + 1) {
+            exits.push(((idx - w) - 1, 1.45));
+        }
+        if self.is_exit_valid(x + 1, y + 1) {
+            exits.push(((idx - w) + 1, 1.45));
+        }     
 
         exits
     }
@@ -170,12 +190,43 @@ pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> Ru
     match ctx.key {
         None => return RunState::Paused,
         Some(key) => match key {
-            bracket_lib::prelude::VirtualKeyCode::Left => try_to_move_player(-1, 0, &mut gs.ecs),
-            bracket_lib::prelude::VirtualKeyCode::Right => try_to_move_player(1, 0, &mut gs.ecs),
-            bracket_lib::prelude::VirtualKeyCode::Up => try_to_move_player(0, -1, &mut gs.ecs),
-            bracket_lib::prelude::VirtualKeyCode::Down => try_to_move_player(0, 1, &mut gs.ecs),
+
+            // cardinal directions
+
+            VirtualKeyCode::Left |
+            VirtualKeyCode::Numpad4 |
+            VirtualKeyCode::H => try_to_move_player(-1, 0, &mut gs.ecs),
+            
+
+            VirtualKeyCode::Right |
+            VirtualKeyCode::Numpad6 |
+            VirtualKeyCode::L => try_to_move_player(1, 0, &mut gs.ecs),
+
+            VirtualKeyCode::Up |
+            VirtualKeyCode::Numpad8 |
+            VirtualKeyCode::K => try_to_move_player(0, -1, &mut gs.ecs),
+            
+            VirtualKeyCode::Down |
+            VirtualKeyCode::Numpad2 |
+            VirtualKeyCode::J => try_to_move_player(0, 1, &mut gs.ecs),
+
+            // diagonal directions
+            VirtualKeyCode::Numpad9 |
+            VirtualKeyCode::Y => try_to_move_player(1, -1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad7 |
+            VirtualKeyCode::U => try_to_move_player(-1, -1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad3 |
+            VirtualKeyCode::N => try_to_move_player(1, 1, &mut gs.ecs),
+
+            VirtualKeyCode::Numpad1 |
+            VirtualKeyCode::B => try_to_move_player(-1, 1, &mut gs.ecs),
+            
+
             _ => return RunState::Paused,
         },
+        
     }
     RunState::Running
 }
