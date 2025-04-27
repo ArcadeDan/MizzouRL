@@ -10,7 +10,9 @@ use bracket_lib::prelude::VirtualKeyCode;
 
 use specs::{Entity, Join, World, WorldExt};
 
-use crate::ecs::component::{CombatStats, Player, Position, RunState, State, Viewshed, WantsToMelee};
+use crate::ecs::component::{
+    CombatStats, Player, Position, RunState, State, Viewshed, WantsToMelee,
+};
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -87,7 +89,7 @@ impl BaseMap for Map {
         }
         if self.is_exit_valid(x + 1, y + 1) {
             exits.push(((idx - w) + 1, 1.45));
-        }     
+        }
 
         exits
     }
@@ -144,7 +146,6 @@ impl Map {
             content.clear();
         }
     }
-
 }
 
 pub struct Rect {
@@ -183,19 +184,30 @@ fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let entities = ecs.entities();
     let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
 
-
-    for (entity, _player, pos, viewshed) in (&entities, &players, &mut positions, &mut viewsheds).join() {
-        if pos.x + delta_x < 1 || pos.x + delta_x > map.width-1 || pos.y + delta_y < 1 || pos.y + delta_y > map.height-1 { return; }
+    for (entity, _player, pos, viewshed) in
+        (&entities, &players, &mut positions, &mut viewsheds).join()
+    {
+        if pos.x + delta_x < 1
+            || pos.x + delta_x > map.width - 1
+            || pos.y + delta_y < 1
+            || pos.y + delta_y > map.height - 1
+        {
+            return;
+        }
         let destination_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
 
         for potential_target in map.tile_content[destination_idx].iter() {
             let target = combat_stats.get(*potential_target);
             if let Some(_target) = target {
-                wants_to_melee.insert(entity, WantsToMelee {
-                    target: *potential_target,
-                }).expect("Add target failed");
+                wants_to_melee
+                    .insert(
+                        entity,
+                        WantsToMelee {
+                            target: *potential_target,
+                        },
+                    )
+                    .expect("Add target failed");
             }
-
         }
 
         if !map.blocked[destination_idx] {
@@ -214,43 +226,34 @@ pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> Ru
     match ctx.key {
         None => return RunState::AwaitingInput,
         Some(key) => match key {
-
             // cardinal directions
+            VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
+                try_to_move_player(-1, 0, &mut gs.ecs)
+            }
 
-            VirtualKeyCode::Left |
-            VirtualKeyCode::Numpad4 |
-            VirtualKeyCode::H => try_to_move_player(-1, 0, &mut gs.ecs),
-            
+            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
+                try_to_move_player(1, 0, &mut gs.ecs)
+            }
 
-            VirtualKeyCode::Right |
-            VirtualKeyCode::Numpad6 |
-            VirtualKeyCode::L => try_to_move_player(1, 0, &mut gs.ecs),
+            VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
+                try_to_move_player(0, -1, &mut gs.ecs)
+            }
 
-            VirtualKeyCode::Up |
-            VirtualKeyCode::Numpad8 |
-            VirtualKeyCode::K => try_to_move_player(0, -1, &mut gs.ecs),
-            
-            VirtualKeyCode::Down |
-            VirtualKeyCode::Numpad2 |
-            VirtualKeyCode::J => try_to_move_player(0, 1, &mut gs.ecs),
+            VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
+                try_to_move_player(0, 1, &mut gs.ecs)
+            }
 
             // diagonal directions
-            VirtualKeyCode::Numpad9 |
-            VirtualKeyCode::Y => try_to_move_player(1, -1, &mut gs.ecs),
+            VirtualKeyCode::Numpad9 | VirtualKeyCode::Y => try_to_move_player(1, -1, &mut gs.ecs),
 
-            VirtualKeyCode::Numpad7 |
-            VirtualKeyCode::U => try_to_move_player(-1, -1, &mut gs.ecs),
+            VirtualKeyCode::Numpad7 | VirtualKeyCode::U => try_to_move_player(-1, -1, &mut gs.ecs),
 
-            VirtualKeyCode::Numpad3 |
-            VirtualKeyCode::N => try_to_move_player(1, 1, &mut gs.ecs),
+            VirtualKeyCode::Numpad3 | VirtualKeyCode::N => try_to_move_player(1, 1, &mut gs.ecs),
 
-            VirtualKeyCode::Numpad1 |
-            VirtualKeyCode::B => try_to_move_player(-1, 1, &mut gs.ecs),
-            
+            VirtualKeyCode::Numpad1 | VirtualKeyCode::B => try_to_move_player(-1, 1, &mut gs.ecs),
 
             _ => return RunState::AwaitingInput,
         },
-        
     }
     RunState::PlayerTurn
 }

@@ -1,5 +1,5 @@
-use specs::prelude::*;
 use crate::{CombatStats, SufferDamage};
+use specs::prelude::*;
 
 pub struct DamageSystem {}
 
@@ -16,8 +16,6 @@ impl<'a> System<'a> for DamageSystem {
         }
         damage.clear();
     }
-
-    
 }
 
 impl DamageSystem {
