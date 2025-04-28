@@ -3,6 +3,7 @@ use ecs::component::{
     BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, RunState, State,
     SufferDamage, Viewshed, WantsToMelee,
 };
+use game::gamelog;
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -114,9 +115,9 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.insert(player_entity);
     gs.ecs.insert(Point::new(player_x, player_y)); // player position
     gs.ecs.insert(RunState::PreRun);
-
+    gs.ecs.insert(gamelog::GameLog{ entries : vec!["Halls of Lafferre".to_string()] });
     bracket_lib::prelude::main_loop(context, gs);
-
+    
     // println!("Hello, world!");
     Ok(())
 }
