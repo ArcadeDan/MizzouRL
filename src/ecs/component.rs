@@ -37,6 +37,16 @@ pub struct Player {}
 pub struct Monster {}
 
 #[derive(Component, Debug)]
+pub struct Item {}
+
+
+#[derive(Component, Debug)]
+pub struct Potion {
+    pub heal_amount: i32,
+}
+
+
+#[derive(Component, Debug)]
 pub struct Name {
     pub name: String,
 }
@@ -47,8 +57,6 @@ pub struct BlocksTile {}
 pub struct Steps {
     pub count: i32,
 }
-
-
 
 #[derive(Component, Debug)]
 pub struct CombatStats {
