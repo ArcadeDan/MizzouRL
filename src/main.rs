@@ -36,8 +36,8 @@ fn main() -> bracket_lib::prelude::BError {
 
     // monsters
     for room in map.rooms.iter().skip(1) {
-        let (x, y) = room.center();
-        spawner::random_monster(&mut gs.ecs, x, y);
+
+        spawner::spawn_room(&mut gs.ecs, room);
     }
 
     let context = bracket_lib::prelude::BTermBuilder::simple80x50()

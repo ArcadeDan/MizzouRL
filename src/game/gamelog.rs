@@ -4,7 +4,6 @@ use specs::WorldExt;
 use std::collections::VecDeque;
 use std::fmt::Display;
 
-
 pub struct GameLog {
     pub entries: Vec<String>,
 }
