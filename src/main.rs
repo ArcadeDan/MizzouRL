@@ -3,7 +3,7 @@ use ecs::component::{
     BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, RunState, State,
     SufferDamage, Viewshed, WantsToMelee,
 };
-use game::gamelog;
+use game::{gamelog, spawner};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
 
@@ -30,79 +30,14 @@ fn main() -> bracket_lib::prelude::BError {
     let (player_x, player_y) = map.rooms[0].center();
 
     // player placdement
-    let player_entity = gs
-        .ecs
-        .create_entity()
-        .with(Position {
-            x: player_x,
-            y: player_y,
-        })
-        .with(Renderable {
-            glyph: bracket_lib::prelude::to_cp437('@'),
-            fg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::YELLOW),
-            bg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::BLACK),
-        })
-        .with(Player {})
-        .with(Viewshed {
-            visible_tiles: Vec::new(),
-            range: 8,
-            dirty: true,
-        })
-        .with(Name {
-            name: "Player".to_string(),
-        })
-        .with(CombatStats {
-            max_hp: 30,
-            hp: 30,
-            defense: 2,
-            power: 5,
-        })
-        //.with(BlocksTile {})
-        .build();
+    let player_entity = spawner::player(&mut gs.ecs, player_x, player_y);
+    gs.ecs
+        .insert(bracket_lib::prelude::RandomNumberGenerator::new());
 
     // monsters
-    for (i, room) in map.rooms.iter().skip(1).enumerate() {
+    for room in map.rooms.iter().skip(1) {
         let (x, y) = room.center();
-        let glyph: bracket_lib::prelude::FontCharType;
-        let name: String;
-
-        let roll = bracket_lib::prelude::RandomNumberGenerator::new().roll_dice(1, 2);
-        match roll {
-            1 => {
-                glyph = bracket_lib::prelude::to_cp437('g');
-                name = "Goblin".to_string();
-            }
-            _ => {
-                glyph = bracket_lib::prelude::to_cp437('o');
-                name = "Orc".to_string();
-            }
-        }
-
-        gs.ecs
-            .create_entity()
-            .with(Position { x, y })
-            .with(Renderable {
-                glyph: glyph,
-                fg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::RED),
-                bg: bracket_lib::prelude::RGB::named(bracket_lib::prelude::BLACK),
-            })
-            .with(Viewshed {
-                visible_tiles: Vec::new(),
-                range: 8,
-                dirty: true,
-            })
-            .with(Monster {})
-            .with(Name {
-                name: format!("{} #{}", &name, i),
-            })
-            .with(CombatStats {
-                max_hp: 16,
-                hp: 16,
-                defense: 1,
-                power: 4,
-            })
-            .with(BlocksTile {})
-            .build();
+        spawner::random_monster(&mut gs.ecs, x, y);
     }
 
     let context = bracket_lib::prelude::BTermBuilder::simple80x50()
@@ -115,9 +50,12 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.insert(player_entity);
     gs.ecs.insert(Point::new(player_x, player_y)); // player position
     gs.ecs.insert(RunState::PreRun);
-    gs.ecs.insert(gamelog::GameLog{ entries : vec!["Halls of Lafferre".to_string()] });
+    gs.ecs.insert(gamelog::GameLog {
+        entries: vec!["Halls of Lafferre".to_string()],
+    });
+
     bracket_lib::prelude::main_loop(context, gs);
-    
+
     // println!("Hello, world!");
     Ok(())
 }
