@@ -1,14 +1,16 @@
-use crate::{CombatStats, SufferDamage, WantsToMelee};
+use crate::{game::gamelog::GameLog, CombatStats, SufferDamage, WantsToMelee};
 use bracket_lib::prelude::console;
-use specs::{Entities, Join, ReadStorage, System, SystemData, WriteStorage};
+use specs::{Entities, Join, ReadStorage, System, SystemData, WriteExpect, WriteStorage};
 
 use super::component::Name;
 
 pub struct MeleeCombatSystem {}
 
 impl<'a> System<'a> for MeleeCombatSystem {
+    #[allow(clippy::type_complexity)]
     type SystemData = (
         Entities<'a>,
+        WriteExpect<'a, GameLog>,
         WriteStorage<'a, WantsToMelee>,
         ReadStorage<'a, Name>,
         ReadStorage<'a, CombatStats>,
@@ -16,7 +18,7 @@ impl<'a> System<'a> for MeleeCombatSystem {
     );
 
     fn run(&mut self, data: Self::SystemData) {
-        let (entities, mut wants_melee, names, combat_stats, mut inflict_damage) = data;
+        let (entities, mut log, mut wants_melee, names, combat_stats, mut inflict_damage) = data;
         for (_entity, wants_melee, name, stats) in
             (&entities, &wants_melee, &names, &combat_stats).join()
         {
@@ -26,15 +28,9 @@ impl<'a> System<'a> for MeleeCombatSystem {
                     let target_name = names.get(wants_melee.target).unwrap();
                     let damage = i32::max(0, stats.power - target_stats.defense);
                     if damage == 0 {
-                        console::log(&format!(
-                            "{} attacks {} but does no damage.",
-                            &name.name, &target_name.name
-                        ));
+                       log.entries.push(format!("{} attacks {} but does no damage.", &name.name, &target_name.name));
                     } else {
-                        console::log(&format!(
-                            "{} attacks {} for {} hit points.",
-                            &name.name, &target_name.name, damage
-                        ));
+                        log.entries.push(format!("{} attacks {} for {} damage.", &name.name, &target_name.name, damage));
                         SufferDamage::new_damage(&mut inflict_damage, wants_melee.target, damage);
                     }
                 }
