@@ -1,11 +1,12 @@
 use std::fs::File;
-
+use specs::saveload::SerializeComponents;
+use specs::error::NoError;
 use specs::{
     saveload::{MarkedBuilder, SimpleMarker},
     Builder, World, WorldExt,
 };
 
-use crate::{ecs::component::{BlocksTile, CombatStats, InBackpack, Item, Monster, Name, Player, Position, Renderable, SufferDamage, Viewshed, WantsToDropItem, WantsToMelee, WantsToPickupItem}, generation::map::Map};
+use crate::{ecs::component::{BlocksTile, CombatStats, InBackpack, Item, Monster, Name, Player, Position, Renderable, SerializationHelper, SufferDamage, Viewshed, WantsToDropItem, WantsToMelee, WantsToPickupItem}, generation::map::Map};
 
 use super::component::SerializeMe;
 

@@ -17,6 +17,7 @@ use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
 use super::damage_system::{self, DamageSystem};
 use super::inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
 use super::melee_combat_system::MeleeCombatSystem;
+use super::saveload_system::save_game;
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
     view_systems::VisibilitySystem,
@@ -24,61 +25,65 @@ use super::{
 
 pub struct SerializeMe;
 
+#[derive(Component, Serialize, Deserialize, Clone)]
+pub struct SerializationHelper {
+    pub map: Map,
+}
 
-#[derive(Component)]
+#[derive(Component, ConvertSaveload, Clone)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
 }
-#[derive(Component)]
+#[derive(Component, ConvertSaveload, Clone)]
 pub struct Renderable {
     pub glyph: bracket_lib::prelude::FontCharType,
     pub fg: bracket_lib::prelude::RGB,
     pub bg: bracket_lib::prelude::RGB,
     pub render_order: i32,
 }
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Player {}
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Monster {}
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Item {}
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Potion {
     pub heal_amount: i32,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct WantsToDrinkPotion {
     pub potion: Entity,
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct InBackpack {
     pub owner: Entity,
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, ConvertSaveload)]
 pub struct WantsToPickupItem {
     pub collected_by: Entity,
     pub item: Entity,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct Name {
     pub name: String,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct BlocksTile {}
 
 pub struct Steps {
     pub count: i32,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct CombatStats {
     pub max_hp: i32,
     pub hp: i32,
@@ -96,7 +101,7 @@ pub struct WantsToDropItem {
     pub item: Entity,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct SufferDamage {
     pub amount: Vec<i32>,
 }
@@ -130,7 +135,7 @@ pub struct State {
     pub ecs: World,
 }
 
-#[derive(Component)]
+#[derive(Component, ConvertSaveload, Clone)]
 pub struct Viewshed {
     pub visible_tiles: Vec<bracket_lib::prelude::Point>,
     pub range: i32,
@@ -265,8 +270,9 @@ impl GameState for State {
             }
             RunState::SaveGame => {
                 save_game(&mut self.ecs);
-                newrunstate = RunState::MainMenu{ menu_selection: MainMenuSelection::LoadGame}
-
+                newrunstate = RunState::MainMenu {
+                    menu_selection: MainMenuSelection::LoadGame,
+                }
             }
             _ => {
                 draw_map(&self.ecs, ctx);
