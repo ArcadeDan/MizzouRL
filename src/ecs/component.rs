@@ -120,6 +120,7 @@ pub enum RunState {
     ShowInventory,
     ShowDropItem,
     MainMenu { menu_selection: MainMenuSelection },
+    SaveGame,
 }
 
 pub struct State {
@@ -258,6 +259,9 @@ impl GameState for State {
                         }
                     },
                 }
+            }
+            RunState::SaveGame => {
+                newrunstate = RunState::MainMenu {menu_selection: MainMenuSelection::LoadGame};
             }
             _ => {
                 draw_map(&self.ecs, ctx);

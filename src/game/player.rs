@@ -102,8 +102,9 @@ pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> Ru
             VirtualKeyCode::G => get_item(&mut gs.ecs),
             VirtualKeyCode::I => return RunState::ShowInventory,
             VirtualKeyCode::D => return RunState::ShowDropItem,
+            VirtualKeyCode::Escape => return RunState::SaveGame,
+
             _ => return RunState::AwaitingInput,
-        
         },
     }
     RunState::PlayerTurn
