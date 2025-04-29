@@ -17,7 +17,7 @@ use super::damage_system::{self, DamageSystem};
 use super::melee_combat_system::MeleeCombatSystem;
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
-    view_systems::VisibilitySystem,
+    view_systems::{VisibilitySystem, CameraSystem, RenderSystem},
 };
 
 #[derive(Component)]
@@ -30,6 +30,7 @@ pub struct Renderable {
     pub glyph: bracket_lib::prelude::FontCharType,
     pub fg: bracket_lib::prelude::RGB,
     pub bg: bracket_lib::prelude::RGB,
+    pub render_order: i32,
 }
 #[derive(Component, Debug)]
 pub struct Player {}
@@ -91,6 +92,7 @@ pub enum RunState {
 
 pub struct State {
     pub ecs: World,
+    pub render_system: RenderSystem,
 }
 
 #[derive(Component)]
@@ -101,9 +103,18 @@ pub struct Viewshed {
 }
 
 impl State {
+    pub fn new() -> Self {
+        Self {
+            ecs: World::new(),
+            render_system: RenderSystem {},
+        }
+    }
+
     pub fn run_systems(&mut self) {
         let mut vis = VisibilitySystem {};
         vis.run_now(&self.ecs);
+        let mut camera_system = CameraSystem{};
+        camera_system.run_now(&self.ecs);
         let mut mob = MonsterAI {};
         mob.run_now(&self.ecs);
         let mut mapindex = MapIndexingSystem {};
@@ -150,18 +161,8 @@ impl GameState for State {
         }
 
         damage_system::DamageSystem::delete_the_dead(&mut self.ecs);
-        draw_map(&self.ecs, ctx);
 
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
-        let map = self.ecs.fetch::<Map>();
-
-        for (pos, render) in (&positions, &renderables).join() {
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph)
-            };
-        }
+        self.render_system.render(&self.ecs, ctx);
         gui::draw_ui(&self.ecs, ctx);
     }
 }

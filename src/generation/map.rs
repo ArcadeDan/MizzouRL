@@ -2,7 +2,7 @@ use std::cmp::{max, min};
 
 use bracket_lib::{
     color::RGB,
-    prelude::{console, Algorithm2D, BaseMap, Point},
+    prelude::{console, Algorithm2D, BaseMap, Point, to_cp437},
     random::RandomNumberGenerator,
 };
 
@@ -13,6 +13,8 @@ use specs::{Entity, Join, World, WorldExt};
 use crate::ecs::component::{
     CombatStats, Player, Position, RunState, State, Viewshed, WantsToMelee,
 };
+use crate::ui::camera;
+use crate::ui::camera::Camera;
 
 const MAPWIDTH: usize = 80;
 const MAPHEIGHT: usize = 43;
@@ -339,38 +341,35 @@ pub fn new_map_rooms_and_corridors() -> Map {
     map
 }
 
-pub fn draw_map(ecs: &World, ctx: &mut bracket_lib::prelude::BTerm) {
+pub fn draw_map(ecs: &World, ctx: &mut bracket_lib::prelude::BTerm, camera: &Camera) {
     let map = ecs.fetch::<Map>();
 
-    let mut y = 0;
-    let mut x = 0;
-    for (idx, tile) in map.tiles.iter().enumerate() {
-        // Render a tile depending upon the tile type
+    for y in camera.y .. camera.y + camera.height {
+        for x in camera.x .. camera.x + camera.width {
+            if x >= 0 && x < map.width && y >= 0 && y < map.height {
+                let idx = map.xy_idx(x, y);
+                if map.revealed_tiles[idx] {
+                    let glyph;
+                    let mut fg;
+                    match map.tiles[idx] {
+                        TileType::Floor => {
+                            glyph = to_cp437('.');
+                            fg = RGB::from_f32(0.0, 0.5, 0.5);
+                        }
+                        TileType::Wall => {
+                            glyph = to_cp437('#');
+                            fg = RGB::from_f32(0., 1.0, 0.);
+                        }
+                    }
+                    if !map.visible_tiles[idx] {
+                        fg = fg.to_greyscale();
+                    }
 
-        if map.revealed_tiles[idx] {
-            let glyph;
-            let mut fg;
-            match tile {
-                TileType::Floor => {
-                    glyph = bracket_lib::prelude::to_cp437('.');
-                    fg = RGB::from_f32(0.0, 0.5, 0.5);
-                }
-                TileType::Wall => {
-                    glyph = bracket_lib::prelude::to_cp437('#');
-                    fg = RGB::from_f32(0., 1.0, 0.);
+                    if let Some((screen_x, screen_y)) = camera.world_to_screen(Point::new(x, y)) {
+                        ctx.set(screen_x, screen_y, fg, RGB::from_f32(0., 0., 0.), glyph);
+                    }
                 }
             }
-            if !map.visible_tiles[idx] {
-                fg = fg.to_greyscale()
-            }
-            ctx.set(x, y, fg, RGB::from_f32(0., 0., 0.), glyph);
-        }
-
-        // Move the coordinates
-        x += 1;
-        if x > MAPWIDTH as i32 - 1 {
-            x = 0;
-            y += 1;
         }
     }
 }
