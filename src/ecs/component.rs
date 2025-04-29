@@ -8,12 +8,12 @@ use specs::{
 };
 use specs_derive::{Component, ConvertSaveload};
 
-use crate::{
-    generation::map::{draw_map, player_input, Map},
-    ui::gui,
-};
+use crate::game::player::player_input;
+use crate::generation::map::{draw_map, Map};
+use crate::ui::gui;
 
 use super::damage_system::{self, DamageSystem};
+use super::inventory_system::ItemCollectionSystem;
 use super::melee_combat_system::MeleeCombatSystem;
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
@@ -39,12 +39,21 @@ pub struct Monster {}
 #[derive(Component, Debug)]
 pub struct Item {}
 
-
 #[derive(Component, Debug)]
 pub struct Potion {
     pub heal_amount: i32,
 }
 
+#[derive(Component, Debug, Clone)]
+pub struct InBackpack {
+    pub owner: Entity,
+}
+
+#[derive(Component, Debug, Clone)]
+pub struct WantsToPickupItem {
+    pub collected_by: Entity,
+    pub item: Entity,
+}
 
 #[derive(Component, Debug)]
 pub struct Name {
@@ -95,6 +104,7 @@ pub enum RunState {
     PreRun,
     PlayerTurn,
     MonsterTurn,
+    ShowInventory,
 }
 
 pub struct State {
@@ -120,6 +130,8 @@ impl State {
         melee.run_now(&self.ecs);
         let mut damage = DamageSystem {};
         damage.run_now(&self.ecs);
+        let mut pickup = ItemCollectionSystem {};
+        pickup.run_now(&self.ecs);
         self.ecs.maintain();
     }
 }
@@ -149,6 +161,11 @@ impl GameState for State {
             RunState::MonsterTurn => {
                 self.run_systems();
                 newrunstate = RunState::AwaitingInput;
+            }
+            RunState::ShowInventory => {
+                if gui::show_inventory(self, ctx) == gui::ItemMenuResult::Cancel {
+                    newrunstate = RunState::AwaitingInput;
+                }
             }
         }
 

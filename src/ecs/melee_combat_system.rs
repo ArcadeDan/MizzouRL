@@ -1,6 +1,6 @@
 use crate::{game::gamelog::GameLog, CombatStats, SufferDamage, WantsToMelee};
-use bracket_lib::prelude::console;
-use specs::{Entities, Join, ReadStorage, System, SystemData, WriteExpect, WriteStorage};
+
+use specs::{Entities, Join, ReadStorage, System, WriteExpect, WriteStorage};
 
 use super::component::Name;
 

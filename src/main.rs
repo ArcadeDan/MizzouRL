@@ -1,6 +1,7 @@
 use bracket_lib::prelude::Point;
 use ecs::component::{
-    BlocksTile, CombatStats, Item, Monster, Name, Player, Position, Potion, Renderable, RunState, State, SufferDamage, Viewshed, WantsToMelee
+    BlocksTile, CombatStats, InBackpack, Item, Monster, Name, Player, Position, Potion, Renderable,
+    RunState, State, SufferDamage, Viewshed, WantsToMelee, WantsToPickupItem,
 };
 use game::{gamelog, spawner};
 use generation::map::{new_map_rooms_and_corridors, Map};
@@ -26,6 +27,8 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<SufferDamage>();
     gs.ecs.register::<Item>();
     gs.ecs.register::<Potion>();
+    gs.ecs.register::<InBackpack>();
+    gs.ecs.register::<WantsToPickupItem>();
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();
@@ -37,7 +40,6 @@ fn main() -> bracket_lib::prelude::BError {
 
     // monsters
     for room in map.rooms.iter().skip(1) {
-
         spawner::spawn_room(&mut gs.ecs, room);
     }
 
