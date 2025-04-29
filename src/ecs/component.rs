@@ -31,6 +31,7 @@ pub struct Renderable {
     pub glyph: bracket_lib::prelude::FontCharType,
     pub fg: bracket_lib::prelude::RGB,
     pub bg: bracket_lib::prelude::RGB,
+    pub render_order: i32,
 }
 #[derive(Component, Debug)]
 pub struct Player {}
@@ -88,9 +89,8 @@ pub struct WantsToMelee {
 
 #[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct WantsToDropItem {
-    pub item: Entity
+    pub item: Entity,
 }
-
 
 #[derive(Component, Debug)]
 pub struct SufferDamage {
@@ -158,6 +158,21 @@ impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
 
+        draw_map(&self.ecs, ctx);
+        {
+        let positions = self.ecs.read_storage::<Position>();
+        let renderables = self.ecs.read_storage::<Renderable>();
+        let map = self.ecs.fetch::<Map>();
+
+        let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+        data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+        for (pos, render) in data.iter() {
+            let idx = map.xy_idx(pos.x, pos.y);
+            if map.visible_tiles[idx] {
+                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+            }
+        }
+    }
         let mut newrunstate;
         {
             let runstate = self.ecs.fetch::<RunState>();
@@ -218,16 +233,13 @@ impl GameState for State {
                         intent
                             .insert(
                                 *self.ecs.fetch::<Entity>(),
-                                WantsToDropItem {
-                                    item: item_entity,
-                                },
+                                WantsToDropItem { item: item_entity },
                             )
                             .expect("Unable to insert intent");
                         newrunstate = RunState::PlayerTurn;
                     }
                 }
             }
-
         }
 
         {
@@ -236,18 +248,9 @@ impl GameState for State {
         }
 
         damage_system::DamageSystem::delete_the_dead(&mut self.ecs);
-        draw_map(&self.ecs, ctx);
+        
+        
 
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
-        let map = self.ecs.fetch::<Map>();
-
-        for (pos, render) in (&positions, &renderables).join() {
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph)
-            };
-        }
         gui::draw_ui(&self.ecs, ctx);
     }
 }
