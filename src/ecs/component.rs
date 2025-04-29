@@ -14,7 +14,7 @@ use crate::generation::map::{draw_map, Map};
 use crate::ui::gui;
 
 use super::damage_system::{self, DamageSystem};
-use super::inventory_system::{ItemCollectionSystem, PotionUseSystem};
+use super::inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
 use super::melee_combat_system::MeleeCombatSystem;
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
@@ -86,6 +86,12 @@ pub struct WantsToMelee {
     pub target: Entity,
 }
 
+#[derive(Component, Debug, ConvertSaveload, Clone)]
+pub struct WantsToDropItem {
+    pub item: Entity
+}
+
+
 #[derive(Component, Debug)]
 pub struct SufferDamage {
     pub amount: Vec<i32>,
@@ -111,6 +117,7 @@ pub enum RunState {
     PlayerTurn,
     MonsterTurn,
     ShowInventory,
+    ShowDropItem,
 }
 
 pub struct State {
@@ -140,6 +147,8 @@ impl State {
         pickup.run_now(&self.ecs);
         let mut potions = PotionUseSystem {};
         potions.run_now(&self.ecs);
+        let mut drop_items = ItemDropSystem {};
+        drop_items.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -196,6 +205,29 @@ impl GameState for State {
                     }
                 }
             }
+            RunState::ShowDropItem => {
+                let result = gui::drop_item_menu(self, ctx);
+                match result.0 {
+                    gui::ItemMenuResult::Cancel => {
+                        newrunstate = RunState::AwaitingInput;
+                    }
+                    gui::ItemMenuResult::NoResponse => {}
+                    gui::ItemMenuResult::Selected => {
+                        let item_entity = result.1.unwrap();
+                        let mut intent = self.ecs.write_storage::<WantsToDropItem>();
+                        intent
+                            .insert(
+                                *self.ecs.fetch::<Entity>(),
+                                WantsToDropItem {
+                                    item: item_entity,
+                                },
+                            )
+                            .expect("Unable to insert intent");
+                        newrunstate = RunState::PlayerTurn;
+                    }
+                }
+            }
+
         }
 
         {
