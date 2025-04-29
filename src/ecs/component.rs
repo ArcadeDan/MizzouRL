@@ -17,7 +17,7 @@ use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
 use super::damage_system::{self, DamageSystem};
 use super::inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
 use super::melee_combat_system::MeleeCombatSystem;
-use super::saveload_system::save_game;
+use super::saveload_system::{load_game, save_game};
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
     view_systems::VisibilitySystem,
@@ -261,7 +261,10 @@ impl GameState for State {
                     }
                     MainMenuResult::Selected { selected } => match selected {
                         MainMenuSelection::NewGame => newrunstate = RunState::PreRun,
-                        MainMenuSelection::LoadGame => newrunstate = RunState::PreRun,
+                        MainMenuSelection::LoadGame => {
+                            load_game(&mut self.ecs);
+                            newrunstate = RunState::AwaitingInput;
+                        },
                         MainMenuSelection::Quit => {
                             ::std::process::exit(0);
                         }
