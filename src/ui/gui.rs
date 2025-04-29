@@ -1,5 +1,5 @@
 use bracket_lib::color::*;
-use bracket_lib::prelude::{to_cp437, BTerm, FontCharType, Point, VirtualKeyCode, RGB};
+use bracket_lib::prelude::{letter_to_option, to_cp437, BTerm, FontCharType, Point, VirtualKeyCode, RGB};
 use specs::{Entity, Join, World, WorldExt};
 
 use crate::ecs::component::{CombatStats, InBackpack, Name, Player, Position, State};
@@ -130,10 +130,11 @@ pub enum ItemMenuResult {
     Selected,
 }
 
-pub fn show_inventory(gs: &mut State, ctx: &mut BTerm) -> ItemMenuResult {
+pub fn show_inventory(gs: &mut State, ctx: &mut BTerm) -> (ItemMenuResult, Option<Entity>) {
     let player_entity = gs.ecs.fetch::<Entity>();
     let names = gs.ecs.read_storage::<Name>();
     let backpack = gs.ecs.read_storage::<InBackpack>();
+    let entities = gs.ecs.entities();
 
     let inventory = (&backpack, &names)
         .join()
@@ -159,30 +160,39 @@ pub fn show_inventory(gs: &mut State, ctx: &mut BTerm) -> ItemMenuResult {
         "Press ESC to cancel",
     );
 
+    let mut equipable: Vec<Entity> = Vec::new();
     let mut j = 0;
 
-    for (_pack, name) in (&backpack, &names)
+    for (entity, _pack, name) in (&entities, &backpack, &names)
         .join()
-        .filter(|item| item.0.owner == *player_entity)
+        .filter(|item| item.1.owner == *player_entity)
     {
         ctx.set(17, y, RGB::named(WHITE), RGB::named(BLACK), to_cp437('('));
-        ctx.set(18, y, RGB::named(YELLOW), RGB::named(BLACK), 97+j as FontCharType);
+        ctx.set(
+            18,
+            y,
+            RGB::named(YELLOW),
+            RGB::named(BLACK),
+            97 + j as FontCharType,
+        );
         ctx.set(19, y, RGB::named(WHITE), RGB::named(BLACK), to_cp437(')'));
 
         ctx.print(21, y, &name.name.to_string());
+        equipable.push(entity);
         y += 1;
         j += 1;
-
     }
     match ctx.key {
-        None => ItemMenuResult::NoResponse,
-        Some(key) => {
-            match key {
-                VirtualKeyCode::Escape => {
-                    ItemMenuResult::Cancel
+        None => (ItemMenuResult::NoResponse, None),
+        Some(key) => match key {
+            VirtualKeyCode::Escape => {(ItemMenuResult::Cancel, None)},
+            _ => {
+                let selection = letter_to_option(key);
+                if selection > -1 && selection < count as i32 {
+                    return (ItemMenuResult::Selected, Some(equipable[selection as usize]));
                 }
-                _ => ItemMenuResult::NoResponse
+                (ItemMenuResult::NoResponse, None)
             }
-        }
+        },
     }
 }
