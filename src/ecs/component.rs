@@ -22,6 +22,9 @@ use super::{
     view_systems::VisibilitySystem,
 };
 
+pub struct SerializeMe;
+
+
 #[derive(Component)]
 pub struct Position {
     pub x: i32,
@@ -261,7 +264,9 @@ impl GameState for State {
                 }
             }
             RunState::SaveGame => {
-                newrunstate = RunState::MainMenu {menu_selection: MainMenuSelection::LoadGame};
+                save_game(&mut self.ecs);
+                newrunstate = RunState::MainMenu{ menu_selection: MainMenuSelection::LoadGame}
+
             }
             _ => {
                 draw_map(&self.ecs, ctx);

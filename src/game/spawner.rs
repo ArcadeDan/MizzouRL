@@ -1,10 +1,10 @@
 use crate::{
-    ecs::component::{Item, Potion},
+    ecs::component::{Item, Potion, SerializeMe},
     generation::map::MAPWIDTH,
     BlocksTile, CombatStats, Monster, Name, Player, Position, Renderable, Viewshed,
 };
 use bracket_lib::prelude::*;
-use specs::prelude::*;
+use specs::{prelude::*, saveload::{MarkedBuilder, SimpleMarker}};
 
 const MAX_MONSTERS: i32 = 4;
 const MAX_ITEMS: i32 = 2;
@@ -36,6 +36,7 @@ pub fn player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
             defense: 2,
             power: 5,
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build()
 }
 
@@ -83,6 +84,7 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: FontCharType, na
             power: 3,
         })
         .with(BlocksTile {})
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
 
@@ -148,5 +150,6 @@ fn health_potion(ecs: &mut World, x: i32, y: i32) {
         .with(Name {
             name: "Health Potion".to_string(),
         })
+        .marked::<SimpleMarker<SerializeMe>>()
         .build();
 }
