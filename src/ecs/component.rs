@@ -11,7 +11,7 @@ use specs_derive::{Component, ConvertSaveload};
 use crate::game::gamelog::GameLog;
 use crate::game::player::player_input;
 use crate::generation::map::{draw_map, Map};
-use crate::ui::gui;
+use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
 
 use super::damage_system::{self, DamageSystem};
 use super::inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
@@ -118,6 +118,7 @@ pub enum RunState {
     MonsterTurn,
     ShowInventory,
     ShowDropItem,
+    MainMenu { menu_selection: MainMenuSelection },
 }
 
 pub struct State {
@@ -160,19 +161,19 @@ impl GameState for State {
 
         draw_map(&self.ecs, ctx);
         {
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
-        let map = self.ecs.fetch::<Map>();
+            let positions = self.ecs.read_storage::<Position>();
+            let renderables = self.ecs.read_storage::<Renderable>();
+            let map = self.ecs.fetch::<Map>();
 
-        let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
-        data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
-        for (pos, render) in data.iter() {
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+            let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+            data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+            for (pos, render) in data.iter() {
+                let idx = map.xy_idx(pos.x, pos.y);
+                if map.visible_tiles[idx] {
+                    ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+                }
             }
         }
-    }
         let mut newrunstate;
         {
             let runstate = self.ecs.fetch::<RunState>();
@@ -240,6 +241,41 @@ impl GameState for State {
                     }
                 }
             }
+            RunState::MainMenu { .. } => {
+                let result = main_menu(self, ctx);
+                match result {
+                    MainMenuResult::NoSelection { selected } => {
+                        newrunstate = RunState::MainMenu {
+                            menu_selection: selected,
+                        }
+                    }
+                    MainMenuResult::Selected { selected } => match selected {
+                        MainMenuSelection::NewGame => newrunstate = RunState::PreRun,
+                        MainMenuSelection::LoadGame => newrunstate = RunState::PreRun,
+                        MainMenuSelection::Quit => {
+                            ::std::process::exit(0);
+                        }
+                    },
+                }
+            }
+            _ => {
+                draw_map(&self.ecs, ctx);
+                {
+                    let positions = self.ecs.read_storage::<Position>();
+                    let renderables = self.ecs.read_storage::<Renderable>();
+                    let map = self.ecs.fetch::<Map>();
+
+                    let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+                    data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+                    for (pos, render) in data.iter() {
+                        let idx = map.xy_idx(pos.x, pos.y);
+                        if map.visible_tiles[idx] {
+                            ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+                        }
+                        draw_ui(&self.ecs, ctx);
+                    }
+                }
+            }
         }
 
         {
@@ -248,8 +284,6 @@ impl GameState for State {
         }
 
         damage_system::DamageSystem::delete_the_dead(&mut self.ecs);
-        
-        
 
         gui::draw_ui(&self.ecs, ctx);
     }

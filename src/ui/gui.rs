@@ -6,6 +6,20 @@ use crate::ecs::component::{CombatStats, InBackpack, Name, Player, Position, Sta
 use crate::game::gamelog::GameLog;
 use crate::generation::map::Map;
 
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum MainMenuSelection {
+    NewGame,
+    LoadGame,
+    Quit,
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum MainMenuResult {
+    NoSelection {selected: MainMenuSelection},
+    Selected {selected: MainMenuSelection}
+}
+
 pub fn draw_ui(ecs: &World, ctx: &mut BTerm) {
     ctx.draw_box(0, 43, 79, 6, RGB::named(WHITE), RGB::named(BLACK));
 
