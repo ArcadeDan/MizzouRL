@@ -9,6 +9,7 @@ use specs::{
 use specs_derive::{Component, ConvertSaveload};
 
 use crate::game::gamelog::GameLog;
+use crate::game::menu::main_menu;
 use crate::game::player::player_input;
 use crate::generation::map::{draw_map, Map};
 use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
