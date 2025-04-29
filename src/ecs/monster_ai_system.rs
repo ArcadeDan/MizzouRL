@@ -24,7 +24,7 @@ impl<'a> System<'a> for MonsterAI {
         let (
             mut map,
             player_pos,
-            mut player_entity,
+            player_entity,
             runstate,
             entities,
             mut viewshed,
