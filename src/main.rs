@@ -1,15 +1,18 @@
 use bracket_lib::prelude::Point;
 use ecs::component::{
-    BlocksTile, CombatStats, InBackpack, Item, Monster, Name, Player, Position, Potion, Renderable, RunState, State, SufferDamage, Viewshed, WantsToDrinkPotion, WantsToDropItem, WantsToMelee, WantsToPickupItem
+    BlocksTile, CombatStats, InBackpack, Item, Monster, Name, Player, Position, Potion, Renderable, RunState, SerializationHelper, SerializeMe, State, SufferDamage, Viewshed, WantsToDrinkPotion, WantsToDropItem, WantsToMelee, WantsToPickupItem
 };
 use game::{gamelog, spawner};
 use generation::map::{new_map_rooms_and_corridors, Map};
 use specs::prelude::*;
+use specs::saveload::{SimpleMarker, SimpleMarkerAllocator};
 
 mod ecs;
 mod game;
 mod generation;
 mod ui;
+
+extern crate serde; 
 
 fn main() -> bracket_lib::prelude::BError {
     let mut gs = State { ecs: World::new() };
@@ -30,6 +33,11 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.register::<WantsToPickupItem>();
     gs.ecs.register::<WantsToDrinkPotion>();
     gs.ecs.register::<WantsToDropItem>();
+    gs.ecs.register::<SimpleMarker<SerializeMe>>();
+    gs.ecs.register::<SerializationHelper>();
+
+    gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
+
 
     let map: Map = new_map_rooms_and_corridors();
     let (player_x, player_y) = map.rooms[0].center();

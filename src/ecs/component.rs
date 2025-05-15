@@ -9,72 +9,81 @@ use specs::{
 use specs_derive::{Component, ConvertSaveload};
 
 use crate::game::gamelog::GameLog;
+use crate::game::menu::main_menu;
 use crate::game::player::player_input;
 use crate::generation::map::{draw_map, Map};
-use crate::ui::gui;
+use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
 
 use super::damage_system::{self, DamageSystem};
 use super::inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
 use super::melee_combat_system::MeleeCombatSystem;
+use super::saveload_system::{delete_save, load_game, save_game};
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
     view_systems::VisibilitySystem,
 };
 
-#[derive(Component)]
+pub struct SerializeMe;
+
+#[derive(Component, Serialize, Deserialize, Clone)]
+pub struct SerializationHelper {
+    pub map: Map,
+}
+
+#[derive(Component, ConvertSaveload, Clone)]
 pub struct Position {
     pub x: i32,
     pub y: i32,
 }
-#[derive(Component)]
+#[derive(Component, ConvertSaveload, Clone)]
 pub struct Renderable {
     pub glyph: bracket_lib::prelude::FontCharType,
     pub fg: bracket_lib::prelude::RGB,
     pub bg: bracket_lib::prelude::RGB,
     pub render_order: i32,
 }
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Player {}
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Monster {}
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Item {}
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct Potion {
     pub heal_amount: i32,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct WantsToDrinkPotion {
     pub potion: Entity,
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct InBackpack {
     pub owner: Entity,
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Debug, Clone, ConvertSaveload)]
 pub struct WantsToPickupItem {
     pub collected_by: Entity,
     pub item: Entity,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct Name {
     pub name: String,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, Serialize, Deserialize, Clone)]
 pub struct BlocksTile {}
 
 pub struct Steps {
     pub count: i32,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct CombatStats {
     pub max_hp: i32,
     pub hp: i32,
@@ -92,7 +101,7 @@ pub struct WantsToDropItem {
     pub item: Entity,
 }
 
-#[derive(Component, Debug)]
+#[derive(Component, Debug, ConvertSaveload, Clone)]
 pub struct SufferDamage {
     pub amount: Vec<i32>,
 }
@@ -118,13 +127,15 @@ pub enum RunState {
     MonsterTurn,
     ShowInventory,
     ShowDropItem,
+    MainMenu { menu_selection: MainMenuSelection },
+    SaveGame,
 }
 
 pub struct State {
     pub ecs: World,
 }
 
-#[derive(Component)]
+#[derive(Component, ConvertSaveload, Clone)]
 pub struct Viewshed {
     pub visible_tiles: Vec<bracket_lib::prelude::Point>,
     pub range: i32,
@@ -160,19 +171,19 @@ impl GameState for State {
 
         draw_map(&self.ecs, ctx);
         {
-        let positions = self.ecs.read_storage::<Position>();
-        let renderables = self.ecs.read_storage::<Renderable>();
-        let map = self.ecs.fetch::<Map>();
+            let positions = self.ecs.read_storage::<Position>();
+            let renderables = self.ecs.read_storage::<Renderable>();
+            let map = self.ecs.fetch::<Map>();
 
-        let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
-        data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
-        for (pos, render) in data.iter() {
-            let idx = map.xy_idx(pos.x, pos.y);
-            if map.visible_tiles[idx] {
-                ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+            let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+            data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+            for (pos, render) in data.iter() {
+                let idx = map.xy_idx(pos.x, pos.y);
+                if map.visible_tiles[idx] {
+                    ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+                }
             }
         }
-    }
         let mut newrunstate;
         {
             let runstate = self.ecs.fetch::<RunState>();
@@ -240,6 +251,51 @@ impl GameState for State {
                     }
                 }
             }
+            RunState::MainMenu { .. } => {
+                let result = main_menu(self, ctx);
+                match result {
+                    MainMenuResult::NoSelection { selected } => {
+                        newrunstate = RunState::MainMenu {
+                            menu_selection: selected,
+                        }
+                    }
+                    MainMenuResult::Selected { selected } => match selected {
+                        MainMenuSelection::NewGame => newrunstate = RunState::PreRun,
+                        MainMenuSelection::LoadGame => {
+                            load_game(&mut self.ecs);
+                            newrunstate = RunState::AwaitingInput;
+                            delete_save();
+                        },
+                        MainMenuSelection::Quit => {
+                            ::std::process::exit(0);
+                        }
+                    },
+                }
+            }
+            RunState::SaveGame => {
+                save_game(&mut self.ecs);
+                newrunstate = RunState::MainMenu {
+                    menu_selection: MainMenuSelection::LoadGame,
+                }
+            }
+            _ => {
+                draw_map(&self.ecs, ctx);
+                {
+                    let positions = self.ecs.read_storage::<Position>();
+                    let renderables = self.ecs.read_storage::<Renderable>();
+                    let map = self.ecs.fetch::<Map>();
+
+                    let mut data = (&positions, &renderables).join().collect::<Vec<_>>();
+                    data.sort_by(|&a, &b| b.1.render_order.cmp(&a.1.render_order));
+                    for (pos, render) in data.iter() {
+                        let idx = map.xy_idx(pos.x, pos.y);
+                        if map.visible_tiles[idx] {
+                            ctx.set(pos.x, pos.y, render.fg, render.bg, render.glyph);
+                        }
+                        draw_ui(&self.ecs, ctx);
+                    }
+                }
+            }
         }
 
         {
@@ -248,8 +304,6 @@ impl GameState for State {
         }
 
         damage_system::DamageSystem::delete_the_dead(&mut self.ecs);
-        
-        
 
         gui::draw_ui(&self.ecs, ctx);
     }
