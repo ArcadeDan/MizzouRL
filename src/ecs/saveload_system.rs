@@ -82,12 +82,14 @@ pub fn load_game(ecs: &mut World) {
     let data = fs::read_to_string("./savegame.json").unwrap();
     let mut de = serde_json::Deserializer::from_str(&data);
 
-    let mut d = (&mut ecs.entities(), &mut ecs.write_storage::<SimpleMarker<SerializeMe>>(), &mut ecs.write_resource::<SimpleMarkerAllocator<SerializeMe>>());
+    {
+        let mut d = (&mut ecs.entities(), &mut ecs.write_storage::<SimpleMarker<SerializeMe>>(), &mut ecs.write_resource::<SimpleMarkerAllocator<SerializeMe>>());
 
-    deserialize_individually!(ecs, de, d, Position, Renderable, Player, Viewshed, Monster,
-        Name, BlocksTile, CombatStats, WantsToMelee, SufferDamage, Item, InBackpack, WantsToPickupItem,
-        WantsToDropItem, SerializationHelper 
-    );
+        deserialize_individually!(ecs, de, d, Position, Renderable, Player, Viewshed, Monster,
+            Name, BlocksTile, CombatStats, WantsToMelee, SufferDamage, Item, InBackpack, WantsToPickupItem,
+            WantsToDropItem, SerializationHelper 
+        );
+    }
 
     let mut deleteme: Option<Entity> = None;
     {
@@ -107,8 +109,9 @@ pub fn load_game(ecs: &mut World) {
             let mut player_resource = ecs.write_resource::<Entity>();
             *player_resource = e;
         }
+    
     }
-    //ecs.delete_entity(deleteme.unwrap()).expect("Unable to delete helper");
+    ecs.delete_entity(deleteme.unwrap()).expect("Unable to delete helper");
 
 }
 
