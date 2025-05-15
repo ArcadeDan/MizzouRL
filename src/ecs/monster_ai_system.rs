@@ -1,5 +1,5 @@
-use crate::{Map, Monster, Name, Position, Viewshed, WantsToMelee};
-use bracket_lib::prelude::{console, Point};
+use crate::{Map, Monster,Position, Viewshed, WantsToMelee};
+use bracket_lib::prelude::Point;
 use specs::prelude::*;
 
 use super::component::RunState;
@@ -24,7 +24,7 @@ impl<'a> System<'a> for MonsterAI {
         let (
             mut map,
             player_pos,
-            mut player_entity,
+            player_entity,
             runstate,
             entities,
             mut viewshed,

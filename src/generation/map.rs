@@ -2,28 +2,24 @@ use std::cmp::{max, min};
 
 use bracket_lib::{
     color::RGB,
-    prelude::{console, Algorithm2D, BaseMap, Point},
+    prelude::{Algorithm2D, BaseMap, Point},
     random::RandomNumberGenerator,
 };
 
-use bracket_lib::prelude::VirtualKeyCode;
+use serde::{Deserialize, Serialize};
+use specs::{Entity, World};
 
-use specs::{Entity, Join, World, WorldExt};
+pub const MAPWIDTH: usize = 80;
+pub const MAPHEIGHT: usize = 43;
+pub const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
 
-use crate::ecs::component::{
-    CombatStats, Player, Position, RunState, State, Viewshed, WantsToMelee,
-};
-
-const MAPWIDTH: usize = 80;
-const MAPHEIGHT: usize = 43;
-const MAPCOUNT: usize = MAPHEIGHT * MAPWIDTH;
-
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub enum TileType {
     Wall,
     Floor,
+    DownStairs,
 }
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Map {
     pub tiles: Vec<TileType>,
     pub rooms: Vec<Rect>,
@@ -32,6 +28,10 @@ pub struct Map {
     pub revealed_tiles: Vec<bool>,
     pub visible_tiles: Vec<bool>,
     pub blocked: Vec<bool>,
+    pub depth: i32,
+
+    #[serde(skip_serializing)]
+    #[serde(skip_deserializing)]
     pub tile_content: Vec<Vec<Entity>>,
 }
 
@@ -148,6 +148,7 @@ impl Map {
     }
 }
 
+#[derive(PartialEq, Copy, Clone, Serialize, Deserialize)]
 pub struct Rect {
     pub x1: i32,
     pub x2: i32,
@@ -173,89 +174,6 @@ impl Rect {
     pub fn center(&self) -> (i32, i32) {
         ((self.x1 + self.x2) / 2, (self.y1 + self.y2) / 2)
     }
-}
-
-fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
-    let mut positions = ecs.write_storage::<Position>();
-    let mut players = ecs.read_storage::<Player>();
-    let mut viewsheds = ecs.write_storage::<Viewshed>();
-    let combat_stats = ecs.read_storage::<CombatStats>();
-    let map = ecs.fetch::<Map>();
-    let entities = ecs.entities();
-    let mut wants_to_melee = ecs.write_storage::<WantsToMelee>();
-
-    for (entity, _player, pos, viewshed) in
-        (&entities, &players, &mut positions, &mut viewsheds).join()
-    {
-        if pos.x + delta_x < 1
-            || pos.x + delta_x > map.width - 1
-            || pos.y + delta_y < 1
-            || pos.y + delta_y > map.height - 1
-        {
-            return;
-        }
-        let destination_idx = map.xy_idx(pos.x + delta_x, pos.y + delta_y);
-
-        for potential_target in map.tile_content[destination_idx].iter() {
-            let target = combat_stats.get(*potential_target);
-            if let Some(_target) = target {
-                wants_to_melee
-                    .insert(
-                        entity,
-                        WantsToMelee {
-                            target: *potential_target,
-                        },
-                    )
-                    .expect("Add target failed");
-            }
-        }
-
-        if !map.blocked[destination_idx] {
-            pos.x = min(79, max(0, pos.x + delta_x));
-            pos.y = min(49, max(0, pos.y + delta_y));
-
-            viewshed.dirty = true;
-            let mut ppos = ecs.write_resource::<Point>();
-            ppos.x = pos.x;
-            ppos.y = pos.y;
-        }
-    }
-}
-
-pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> RunState {
-    match ctx.key {
-        None => return RunState::AwaitingInput,
-        Some(key) => match key {
-            // cardinal directions
-            VirtualKeyCode::Left | VirtualKeyCode::Numpad4 | VirtualKeyCode::H => {
-                try_to_move_player(-1, 0, &mut gs.ecs)
-            }
-
-            VirtualKeyCode::Right | VirtualKeyCode::Numpad6 | VirtualKeyCode::L => {
-                try_to_move_player(1, 0, &mut gs.ecs)
-            }
-
-            VirtualKeyCode::Up | VirtualKeyCode::Numpad8 | VirtualKeyCode::K => {
-                try_to_move_player(0, -1, &mut gs.ecs)
-            }
-
-            VirtualKeyCode::Down | VirtualKeyCode::Numpad2 | VirtualKeyCode::J => {
-                try_to_move_player(0, 1, &mut gs.ecs)
-            }
-
-            // diagonal directions
-            VirtualKeyCode::Numpad9 | VirtualKeyCode::Y => try_to_move_player(1, -1, &mut gs.ecs),
-
-            VirtualKeyCode::Numpad7 | VirtualKeyCode::U => try_to_move_player(-1, -1, &mut gs.ecs),
-
-            VirtualKeyCode::Numpad3 | VirtualKeyCode::N => try_to_move_player(1, 1, &mut gs.ecs),
-
-            VirtualKeyCode::Numpad1 | VirtualKeyCode::B => try_to_move_player(-1, 1, &mut gs.ecs),
-
-            _ => return RunState::AwaitingInput,
-        },
-    }
-    RunState::PlayerTurn
 }
 
 // pub fn new_map_test() -> Vec<TileType> {
@@ -285,7 +203,7 @@ pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> Ru
 //     map
 // }
 
-pub fn new_map_rooms_and_corridors() -> Map {
+pub fn new_map_rooms_and_corridors(new_Depth: i32) -> Map {
     let mut map = Map {
         tiles: vec![TileType::Wall; MAPCOUNT],
         rooms: Vec::new(),
@@ -295,6 +213,7 @@ pub fn new_map_rooms_and_corridors() -> Map {
         visible_tiles: vec![false; MAPCOUNT],
         blocked: vec![false; MAPCOUNT],
         tile_content: vec![Vec::new(); MAPCOUNT],
+        depth: new_Depth,
     };
 
     const MAX_ROOMS: i32 = 30;
@@ -336,6 +255,9 @@ pub fn new_map_rooms_and_corridors() -> Map {
         }
     }
 
+    let stairs_position = map.rooms[map.rooms.len() - 1].center();
+    let stairs_idx = map.xy_idx(stairs_position.0, stairs_position.1);
+    map.tiles[stairs_idx] = TileType::DownStairs;
     map
 }
 
@@ -358,6 +280,10 @@ pub fn draw_map(ecs: &World, ctx: &mut bracket_lib::prelude::BTerm) {
                 TileType::Wall => {
                     glyph = bracket_lib::prelude::to_cp437('#');
                     fg = RGB::from_f32(0., 1.0, 0.);
+                }
+                TileType::DownStairs => {
+                    glyph = bracket_lib::prelude::to_cp437('>');
+                    fg = RGB::from_f32(0., 1.0, 1.0);
                 }
             }
             if !map.visible_tiles[idx] {
