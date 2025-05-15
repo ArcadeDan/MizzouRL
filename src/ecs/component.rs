@@ -256,7 +256,18 @@ impl State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
-
+    
+    
+    
+    {
+        let combat_stats = self.ecs.read_storage::<CombatStats>();
+        let players = self.ecs.read_storage::<Player>();
+        for (_player, stats) in (&players, &combat_stats).join() {
+            if stats.hp <= 0 {
+                ctx.quitting = true; // This will close the window
+            }
+        }
+    }
         draw_map(&self.ecs, ctx);
         {
             let positions = self.ecs.read_storage::<Position>();
