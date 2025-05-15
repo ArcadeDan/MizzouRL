@@ -98,4 +98,5 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
     MainMenuResult::NoSelection {
         selected: MainMenuSelection::NewGame,
     }
+    //
 }
