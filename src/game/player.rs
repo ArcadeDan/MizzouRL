@@ -16,8 +16,25 @@ use crate::ecs::component::Viewshed;
 use crate::ecs::component::WantsToMelee;
 use crate::ecs::component::WantsToPickupItem;
 use crate::generation::map::Map;
+use crate::generation::map::TileType;
 
+use super::gamelog;
 use super::gamelog::GameLog;
+
+
+
+pub fn try_next_level(ecs: &mut World) -> bool {
+    let player_pos = ecs.fetch::<Point>();
+    let map = ecs.fetch::<Map>();
+    let player_idx = map.xy_idx(player_pos.x, player_pos.y);
+    if map.tiles[player_idx] == TileType::DownStairs {
+        true
+    } else {
+        let mut gamelog = ecs.fetch_mut::<GameLog>();
+        gamelog.entries.push("There is no way down.".to_string());
+        false
+    }
+}
 
 fn try_to_move_player(delta_x: i32, delta_y: i32, ecs: &mut World) {
     let mut positions = ecs.write_storage::<Position>();
@@ -97,6 +114,11 @@ pub fn player_input(gs: &mut State, ctx: &mut bracket_lib::prelude::BTerm) -> Ru
             VirtualKeyCode::Numpad1 | VirtualKeyCode::B => try_to_move_player(-1, 1, &mut gs.ecs),
 
             // input
+            VirtualKeyCode::Period => {
+                if try_next_level(&mut gs.ecs) {
+                    return RunState::NextLevel;
+                }
+            }
 
             //pickup
             VirtualKeyCode::G => get_item(&mut gs.ecs),

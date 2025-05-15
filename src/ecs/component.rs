@@ -1,6 +1,7 @@
-use bracket_lib::prelude::GameState;
+use bracket_lib::prelude::{GameState, Point};
 use serde::{Deserialize, Serialize};
 use specs::prelude::*;
+use specs::storage::GenericReadStorage;
 use specs::{
     error::NoError,
     saveload::{ConvertSaveload, Marker},
@@ -8,10 +9,11 @@ use specs::{
 };
 use specs_derive::{Component, ConvertSaveload};
 
-use crate::game::gamelog::GameLog;
+use crate::game::gamelog::{self, GameLog};
 use crate::game::menu::main_menu;
-use crate::game::player::player_input;
-use crate::generation::map::{draw_map, Map};
+use crate::game::player::{self, player_input};
+use crate::game::spawner::spawn_room;
+use crate::generation::map::{draw_map, new_map_rooms_and_corridors, Map};
 use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
 
 use super::damage_system::{self, DamageSystem};
@@ -129,6 +131,7 @@ pub enum RunState {
     ShowDropItem,
     MainMenu { menu_selection: MainMenuSelection },
     SaveGame,
+    NextLevel,
 }
 
 pub struct State {
@@ -163,12 +166,108 @@ impl State {
 
         self.ecs.maintain();
     }
+    fn entities_toremove_on_level_change(&mut self) -> Vec<Entity> {
+        let entities = self.ecs.entities();
+        let player = self.ecs.read_storage::<Player>();
+        let backpack = self.ecs.read_storage::<InBackpack>();
+        let player_entity = self.ecs.fetch::<Entity>();
+
+        let mut to_delete: Vec<Entity> = Vec::new();
+        for entity in entities.join() {
+            let mut should_delete = true;
+
+            // don't delete player
+            let p = player.get(entity);
+            if let Some(_p) = p {
+                should_delete = false;
+            }
+
+            // don't delete items in backpack
+            let bp = backpack.get(entity);
+            if let Some(_bp) = bp {
+                if bp.unwrap().owner == *player_entity {
+                    should_delete = false;
+                }
+            }
+            if should_delete {
+                to_delete.push(entity);
+            }
+        }
+        to_delete
+
+    }
+
+    fn goto_next_level(&mut self) {
+        // delete all entities that are not the player or in the player's backpack
+        let to_delete = self.entities_toremove_on_level_change();
+        for target in to_delete {
+            self.ecs.delete_entity(target).expect("Unable to delete entity");
+        }
+
+        // build new map
+        let worldmap;
+        {
+            let mut worldmap_resource = self.ecs.write_resource::<Map>();
+            let current_depth = worldmap_resource.depth;
+            *worldmap_resource = new_map_rooms_and_corridors(current_depth + 1);
+            worldmap = worldmap_resource.clone();
+
+        }
+
+        // spawn bad guys
+        for room in worldmap.rooms.iter().skip(1) {
+            spawn_room(&mut self.ecs, room);
+        }
+
+        // place the player and update resources
+        let (player_x, player_y) = worldmap.rooms[0].center();
+        let mut player_position = self.ecs.write_resource::<Point>();
+        *player_position = Point::new(player_x, player_y);
+        let mut position_components = self.ecs.write_storage::<Position>();
+        let player_entity = self.ecs.fetch::<Entity>();
+        let player_pos_comp = position_components.get_mut(*player_entity);
+        if let Some(player_pos_comp) = player_pos_comp {
+            player_pos_comp.x = player_x;
+            player_pos_comp.y = player_y;
+        }
+        
+        // mark visibility
+        let mut viewshed_components = self.ecs.write_storage::<Viewshed>();
+        let vs = viewshed_components.get_mut(*player_entity);
+        if let Some(vs) = vs {
+            vs.dirty = true;
+        }
+
+        let mut gamelog = self.ecs.fetch_mut::<GameLog>();
+        gamelog.entries.push("You descend to the next level.".to_string());
+        let mut player_health_store = self.ecs.write_storage::<CombatStats>();
+        let player_health = player_health_store.get_mut(*player_entity);
+        if let Some(player_health) = player_health {
+            player_health.hp = i32::max(player_health.hp, player_health.max_hp / 2);
+        }
+
+
+
+
+    }
+
 }
 
 impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
-
+    
+    
+    
+    {
+        let combat_stats = self.ecs.read_storage::<CombatStats>();
+        let players = self.ecs.read_storage::<Player>();
+        for (_player, stats) in (&players, &combat_stats).join() {
+            if stats.hp <= 0 {
+                ctx.quitting = true; // This will close the window
+            }
+        }
+    }
         draw_map(&self.ecs, ctx);
         {
             let positions = self.ecs.read_storage::<Position>();
@@ -277,6 +376,10 @@ impl GameState for State {
                 newrunstate = RunState::MainMenu {
                     menu_selection: MainMenuSelection::LoadGame,
                 }
+            }
+            RunState::NextLevel => {
+                self.goto_next_level();
+                newrunstate = RunState::PreRun;
             }
             _ => {
                 draw_map(&self.ecs, ctx);

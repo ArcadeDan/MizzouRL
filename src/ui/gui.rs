@@ -61,6 +61,13 @@ pub fn draw_ui(ecs: &World, ctx: &mut BTerm) {
     //     RGB::named(BLACK),
     //     "Halls of Laffere",
     // );
+
+    let map = ecs.fetch::<Map>();
+    let depth = format!("Depth: {}", map.depth);
+    ctx.print_color(2, 43, RGB::named(YELLOW), RGB::named(BLACK), &depth);
+
+
+
 }
 
 fn draw_tooltips(ecs: &World, ctx: &mut bracket_lib::prelude::BTerm) {

@@ -39,7 +39,7 @@ fn main() -> bracket_lib::prelude::BError {
     gs.ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
 
 
-    let map: Map = new_map_rooms_and_corridors();
+    let map: Map = new_map_rooms_and_corridors(1);
     let (player_x, player_y) = map.rooms[0].center();
 
     // player placdement
