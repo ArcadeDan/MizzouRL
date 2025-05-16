@@ -9,6 +9,7 @@ use crate::generation::map::Map;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum MainMenuSelection {
+    Resume,
     NewGame,
     LoadGame,
     Quit,

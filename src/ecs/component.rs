@@ -359,6 +359,9 @@ impl GameState for State {
                         }
                     }
                     MainMenuResult::Selected { selected } => match selected {
+                        MainMenuSelection::Resume => {
+                            newrunstate = RunState::AwaitingInput;
+                        }
                         MainMenuSelection::NewGame => newrunstate = RunState::PreRun,
                         MainMenuSelection::LoadGame => {
                             load_game(&mut self.ecs);

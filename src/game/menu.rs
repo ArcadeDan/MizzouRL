@@ -22,6 +22,11 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
         menu_selection: selection,
     } = *runstate
     {
+        if selection == MainMenuSelection::Resume {
+            ctx.print_color_centered(23, RGB::named(MAGENTA), RGB::named(BLACK), "Resume");
+        } else {
+            ctx.print_color_centered(23, RGB::named(WHITE), RGB::named(BLACK), "Resume");
+        }
         if selection == MainMenuSelection::NewGame {
             ctx.print_color_centered(24, RGB::named(MAGENTA), RGB::named(BLACK), "New Game");
         } else {
@@ -55,7 +60,8 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
                 VirtualKeyCode::Up => {
                     let mut newselection;
                     match selection {
-                        MainMenuSelection::NewGame => newselection = MainMenuSelection::Quit,
+                        MainMenuSelection::Resume => newselection = MainMenuSelection::Quit,
+                        MainMenuSelection::NewGame => newselection = MainMenuSelection::Resume,
                         MainMenuSelection::LoadGame => newselection = MainMenuSelection::NewGame,
                         MainMenuSelection::Quit => newselection = MainMenuSelection::LoadGame,
                     }
@@ -71,6 +77,7 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
                 VirtualKeyCode::Down => {
                     let mut newselection;
                     match selection {
+                        MainMenuSelection::Resume => newselection = MainMenuSelection::NewGame,
                         MainMenuSelection::NewGame => newselection = MainMenuSelection::LoadGame,
                         MainMenuSelection::LoadGame => newselection = MainMenuSelection::Quit,
                         MainMenuSelection::Quit => newselection = MainMenuSelection::NewGame,
