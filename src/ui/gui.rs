@@ -12,6 +12,7 @@ pub enum MainMenuSelection {
     NewGame,
     LoadGame,
     Quit,
+    SaveGame
 }
 
 #[derive(PartialEq, Copy, Clone)]

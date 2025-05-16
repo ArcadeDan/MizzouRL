@@ -130,8 +130,8 @@ pub enum RunState {
     ShowInventory,
     ShowDropItem,
     MainMenu { menu_selection: MainMenuSelection },
-    SaveGame,
-    NextLevel,
+    ShowMenu,
+    NextLevel
 }
 
 pub struct State {
@@ -363,7 +363,12 @@ impl GameState for State {
                         MainMenuSelection::LoadGame => {
                             load_game(&mut self.ecs);
                             newrunstate = RunState::AwaitingInput;
-                            delete_save();
+                            //delete_save();
+                        },
+                        MainMenuSelection::SaveGame => {
+                            save_game(&mut self.ecs);
+                            newrunstate = RunState::AwaitingInput;
+                            //delete_save();
                         },
                         MainMenuSelection::Quit => {
                             ::std::process::exit(0);
@@ -371,8 +376,8 @@ impl GameState for State {
                     },
                 }
             }
-            RunState::SaveGame => {
-                save_game(&mut self.ecs);
+            RunState::ShowMenu => {
+                // save_game(&mut self.ecs);
                 newrunstate = RunState::MainMenu {
                     menu_selection: MainMenuSelection::LoadGame,
                 }
