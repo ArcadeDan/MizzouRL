@@ -44,7 +44,11 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
         } else {
             ctx.print_color_centered(27, RGB::named(WHITE), RGB::named(BLACK), "New Game");
         }
-
+        if selection == MainMenuSelection::Close {
+            ctx.print_color_centered(30, RGB::named(MAGENTA), RGB::named(BLACK), "Close");
+        } else {
+            ctx.print_color_centered(30, RGB::named(WHITE), RGB::named(BLACK), "Close [esc]");
+        }
         match ctx.key {
             None => {
                 return MainMenuResult::NoSelection {
@@ -52,9 +56,9 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
                 }
             }
             Some(key) => match key {
-                VirtualKeyCode::Escape => {
+                VirtualKeyCode::Escape => { // Press Esc to Close?
                     return MainMenuResult::NoSelection {
-                        selected: MainMenuSelection::Quit,
+                        selected: MainMenuSelection::Close,
                     }
                 }
                 VirtualKeyCode::Up => {
@@ -64,6 +68,7 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
                         MainMenuSelection::LoadGame => newselection = MainMenuSelection::SaveGame,
                         MainMenuSelection::Quit => newselection = MainMenuSelection::LoadGame,
                         MainMenuSelection::NewGame => newselection = MainMenuSelection::Quit,
+                        MainMenuSelection::Close => newselection = MainMenuSelection::SaveGame
                     }
 
                     if newselection == MainMenuSelection::LoadGame && !save_exists {
@@ -81,6 +86,7 @@ pub fn main_menu(gs: &mut State, ctx: &mut BTerm) -> MainMenuResult {
                         MainMenuSelection::SaveGame => newselection = MainMenuSelection::LoadGame,
                         MainMenuSelection::LoadGame => newselection = MainMenuSelection::Quit,
                         MainMenuSelection::Quit => newselection = MainMenuSelection::NewGame,
+                        MainMenuSelection::Close => newselection = MainMenuSelection::SaveGame
                     }
                     if newselection == MainMenuSelection::LoadGame && !save_exists {
                         newselection = MainMenuSelection::Quit;

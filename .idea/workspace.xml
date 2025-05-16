@@ -8,10 +8,12 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="c1094544-8da5-4231-bdc8-66c097eaeffd" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/savegame.json" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/savegame.json" beforeDir="false" afterPath="$PROJECT_DIR$/savegame.json" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ecs/component.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ecs/component.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ecs/saveload_system.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ecs/saveload_system.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/game/menu.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/game/menu.rs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/game/player.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/game/player.rs" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.rs" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/gui.rs" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/gui.rs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -85,7 +87,7 @@
       <updated>1747350348556</updated>
       <workItem from="1747350351142" duration="25000" />
       <workItem from="1747350419818" duration="1986000" />
-      <workItem from="1747354289561" duration="2360000" />
+      <workItem from="1747354289561" duration="5012000" />
     </task>
     <servers />
   </component>

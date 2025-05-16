@@ -19,7 +19,7 @@ use crate::ui::gui::{self, draw_ui, MainMenuResult, MainMenuSelection};
 use super::damage_system::{self, DamageSystem};
 use super::inventory_system::{ItemCollectionSystem, ItemDropSystem, PotionUseSystem};
 use super::melee_combat_system::MeleeCombatSystem;
-use super::saveload_system::{delete_save, load_game, save_game};
+use super::saveload_system::{delete_save, load_game, save_game, new_game};
 use super::{
     map_indexing_system::MapIndexingSystem, monster_ai_system::MonsterAI,
     view_systems::VisibilitySystem,
@@ -256,15 +256,14 @@ impl State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut bracket_lib::prelude::BTerm) {
         ctx.cls();
-    
-    
-    
+        let mut player_dead = false;
     {
         let combat_stats = self.ecs.read_storage::<CombatStats>();
         let players = self.ecs.read_storage::<Player>();
         for (_player, stats) in (&players, &combat_stats).join() {
             if stats.hp <= 0 {
-                ctx.quitting = true; // This will close the window
+                player_dead = true;
+                //ctx.quitting = true; // This will close the window
             }
         }
     }
@@ -359,7 +358,12 @@ impl GameState for State {
                         }
                     }
                     MainMenuResult::Selected { selected } => match selected {
-                        MainMenuSelection::NewGame => newrunstate = RunState::PreRun,
+                        //MainMenuSelection::NewGame => newrunstate = RunState::PreRun,
+                        MainMenuSelection::NewGame => {
+                            new_game(&mut self.ecs);
+                            newrunstate = RunState::AwaitingInput;
+                            //delete_save();
+                        },
                         MainMenuSelection::LoadGame => {
                             load_game(&mut self.ecs);
                             newrunstate = RunState::AwaitingInput;
@@ -372,6 +376,9 @@ impl GameState for State {
                         },
                         MainMenuSelection::Quit => {
                             ::std::process::exit(0);
+                        },
+                        MainMenuSelection::Close => {
+                            newrunstate = RunState::AwaitingInput;
                         }
                     },
                 }
@@ -414,5 +421,10 @@ impl GameState for State {
         damage_system::DamageSystem::delete_the_dead(&mut self.ecs);
 
         gui::draw_ui(&self.ecs, ctx);
+        if player_dead {
+            new_game(&mut self.ecs);
+            let mut gamelog = self.ecs.fetch_mut::<GameLog>();
+            gamelog.entries.push("You died!".to_string());
+        }
     }
 }

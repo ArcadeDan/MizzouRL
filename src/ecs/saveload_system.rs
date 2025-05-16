@@ -112,7 +112,6 @@ pub fn load_game(ecs: &mut World) {
     
     }
     ecs.delete_entity(deleteme.unwrap()).expect("Unable to delete helper");
-
 }
 
 pub fn delete_save() {
@@ -122,4 +121,64 @@ pub fn delete_save() {
 
 pub fn does_save_exist() -> bool {
     Path::new("./savegame.json").exists()
+}
+
+use specs::prelude::*;
+use crate::ecs::component::*;
+use crate::game::{gamelog, spawner};
+use crate::generation::map::{new_map_rooms_and_corridors};
+
+pub fn new_game(ecs: & mut World) {
+    {
+        let mut to_delete = Vec::new();
+        for e in ecs.entities().join() {
+            to_delete.push(e);
+        }
+        for del in to_delete.iter() {
+            ecs.delete_entity(*del).expect("Deletion failed");
+        }
+    }
+    // Register all component types
+    ecs.register::<Position>();
+    ecs.register::<Renderable>();
+    ecs.register::<Player>();
+    ecs.register::<Viewshed>();
+    ecs.register::<Monster>();
+    ecs.register::<Name>();
+    ecs.register::<BlocksTile>();
+    ecs.register::<CombatStats>();
+    ecs.register::<WantsToMelee>();
+    ecs.register::<SufferDamage>();
+    ecs.register::<Item>();
+    ecs.register::<Potion>();
+    ecs.register::<InBackpack>();
+    ecs.register::<WantsToPickupItem>();
+    ecs.register::<WantsToDrinkPotion>();
+    ecs.register::<WantsToDropItem>();
+    ecs.register::<SimpleMarker<SerializeMe>>();
+    ecs.register::<SerializationHelper>();
+
+    ecs.insert(SimpleMarkerAllocator::<SerializeMe>::new());
+    ecs.insert(bracket_lib::prelude::RandomNumberGenerator::new());
+
+    // Create map and get starting position
+    let map: Map = new_map_rooms_and_corridors(1);
+    let (player_x, player_y) = map.rooms[0].center();
+
+    // Spawn player
+    let player_entity = spawner::player(ecs, player_x, player_y);
+
+    // Spawn monsters/items in other rooms
+    for room in map.rooms.iter().skip(1) {
+        spawner::spawn_room(ecs, room);
+    }
+
+    // Insert world resources
+    ecs.insert(map);
+    ecs.insert(player_entity);
+    ecs.insert(Point::new(player_x, player_y)); // player position
+    ecs.insert(RunState::PreRun);
+    ecs.insert(gamelog::GameLog {
+        entries: vec!["Halls of Lafferre".to_string()],
+    });
 }
